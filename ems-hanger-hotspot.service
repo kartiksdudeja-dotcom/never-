@@ -1,0 +1,19 @@
+[Unit]
+Description=EMS Hanger Hotspot Setup
+After=network.target NetworkManager.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/vw/Downloads/EMS-HANGER-main/start_hotspot_auto.sh
+TimeoutStartSec=120
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ems-hanger-hotspot
+
+[Install]
+WantedBy=multi-user.target

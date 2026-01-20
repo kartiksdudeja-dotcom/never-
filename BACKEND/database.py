@@ -23,12 +23,15 @@ def init_database():
     cursor = None
     try:
         # First connect without database to create it if needed
+        print(f"Attempting to connect to MySQL at {Config.DB_HOST}...")
         connection = mysql.connector.connect(
             host=Config.DB_HOST,
             user=Config.DB_USER,
-            password=Config.DB_PASSWORD
+            password=Config.DB_PASSWORD,
+            connection_timeout=5
         )
         cursor = connection.cursor()
+        print("✓ Connected to MySQL successfully")
         
         # Create database if not exists
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {Config.DB_NAME}")
@@ -203,13 +206,17 @@ def init_database():
         """)
         
         connection.commit()
-        print("Database initialized successfully!")
+        print("✓ Database initialized successfully!")
         
         # Insert default data
         insert_default_data(cursor, connection)
         
     except Error as e:
-        print(f"Error initializing database: {e}")
+        print(f"✗ Error initializing database: {e}")
+        print(f"  Database Host: {Config.DB_HOST}")
+        print(f"  Database Name: {Config.DB_NAME}")
+        print("  Please ensure MySQL server is running and accessible.")
+        raise
     finally:
         if cursor:
             cursor.close()
@@ -330,10 +337,11 @@ def insert_default_data(cursor, connection):
                 """, (sr, activity))
         
         connection.commit()
-        print("Default data inserted successfully!")
+        print("✓ Default data inserted successfully!")
         
     except Error as e:
-        print(f"Error inserting default data: {e}")
+        print(f"✗ Error inserting default data: {e}")
+        connection.rollback()
 
 
 if __name__ == "__main__":

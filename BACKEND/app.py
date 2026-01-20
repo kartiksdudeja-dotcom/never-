@@ -4,6 +4,11 @@ from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+import subprocess
+import threading
+import os
+import signal
+
 from config import config
 from database import init_database
 
@@ -22,6 +27,59 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://",
 )
+
+
+# Global variable to track redirect server process
+redirect_process = None
+
+
+def start_redirect_server():
+    """Start the captive portal redirect server (port 80) in a subprocess"""
+    global redirect_process
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), 'captive_redirect.py')
+        print("\n🔄 Starting Captive Portal Redirect Server (port 80)...")
+        
+        # Try to start with sudo if needed, fallback to regular python
+        try:
+            redirect_process = subprocess.Popen(
+                ['sudo', 'python3', script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            print("✓ Redirect server started with sudo")
+        except Exception as e:
+            print(f"⚠ Warning: Could not start redirect with sudo: {e}")
+            print("  Attempting without sudo (may fail on port 80)...")
+            redirect_process = subprocess.Popen(
+                ['python3', script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            print("✓ Redirect server started (without sudo)")
+    
+    except Exception as e:
+        print(f"✗ Error starting redirect server: {e}")
+        print("  Captive portal redirect will not work on port 80")
+        print("  You may need to run the backend with: sudo python3 app.py")
+
+
+def stop_redirect_server():
+    """Stop the captive portal redirect server"""
+    global redirect_process
+    if redirect_process:
+        try:
+            redirect_process.terminate()
+            redirect_process.wait(timeout=2)
+            print("✓ Redirect server stopped")
+        except Exception as e:
+            print(f"⚠ Error stopping redirect server: {e}")
+            try:
+                redirect_process.kill()
+            except:
+                pass
 
 
 def create_app(config_name='development'):
@@ -208,9 +266,32 @@ def create_app(config_name='development'):
 
 
 if __name__ == '__main__':
-    # Initialize database on startup
-    init_database()
+    # Initialize database on startup (with error handling)
+    try:
+        init_database()
+        print("✓ Database initialized successfully")
+    except Exception as e:
+        print(f"⚠ Warning: Database initialization failed: {e}")
+        print("  The server will continue running, but database operations may fail.")
+        print("  Please ensure MySQL is running and configured correctly.")
+    
+    # Start redirect server for port 80
+    start_redirect_server()
     
     # Create and run app
     app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("\n" + "="*50)
+    print("🚀 EMS-HANGER Backend Server Starting")
+    print("="*50)
+    print(f"Backend API: http://0.0.0.0:5000")
+    print(f"Captive Portal: http://10.42.0.1:5173/captive-portal")
+    print("="*50 + "\n")
+    
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except KeyboardInterrupt:
+        print("\n\nShutting down...")
+        stop_redirect_server()
+    except Exception as e:
+        print(f"\nError: {e}")
+        stop_redirect_server()

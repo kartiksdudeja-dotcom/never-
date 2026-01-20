@@ -1,0 +1,23 @@
+[Unit]
+Description=EMS Hanger Backend Service
+After=network.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/vw/Downloads/EMS-HANGER-main/BACKEND
+ExecStart=/usr/bin/python3 /home/vw/Downloads/EMS-HANGER-main/BACKEND/app.py
+Restart=always
+RestartSec=10
+TimeoutStartSec=30
+Environment="FLASK_ENV=production"
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ems-hanger-backend
+
+[Install]
+WantedBy=multi-user.target
+
+[Install]
+WantedBy=multi-user.target
