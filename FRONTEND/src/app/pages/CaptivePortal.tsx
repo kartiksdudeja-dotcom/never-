@@ -19,31 +19,63 @@ const CaptivePortal: React.FC = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [deviceType, setDeviceType] = useState('');
+
+  useEffect(() => {
+    // Detect device type for better debugging
+    const ua = navigator.userAgent.toLowerCase();
+    let detected = 'Unknown';
+    
+    if (ua.includes('samsung')) {
+      detected = 'Samsung';
+    } else if (ua.includes('android')) {
+      detected = 'Android';
+    } else if (ua.includes('iphone') || ua.includes('ipad')) {
+      detected = 'iOS';
+    } else if (ua.includes('windows')) {
+      detected = 'Windows';
+    } else if (ua.includes('macintosh') || ua.includes('mac os')) {
+      detected = 'macOS';
+    }
+    
+    setDeviceType(detected);
+    console.log(`[Captive Portal] Device detected: ${detected}`);
+    console.log(`[Captive Portal] User Agent: ${ua}`);
+  }, []);
 
   useEffect(() => {
     // Check if device is connected to the hotspot by pinging the backend
     const checkConnection = async () => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
         
         const response = await fetch(`${API_BASE}/api/health`, {
           method: 'GET',
           signal: controller.signal,
           mode: 'cors',
+          headers: {
+            'Cache-Control': 'no-cache',
+          }
         });
         clearTimeout(timeoutId);
         
         if (response.ok) {
+          console.log('[Captive Portal] Backend connection successful');
           setIsConnected(true);
           setIsRedirecting(true);
         }
       } catch (error) {
-        console.log('Connection check attempt:', connectionAttempts + 1);
+        console.log(`[Captive Portal] Connection check attempt: ${connectionAttempts + 1}`);
         setConnectionAttempts(prev => prev + 1);
+        
         // Retry after 1.5 seconds if not connected
-        if (connectionAttempts < 20) {
+        if (connectionAttempts < 30) {
           setTimeout(checkConnection, 1500);
+        } else {
+          // After 30 attempts, try direct redirect anyway
+          console.log('[Captive Portal] Max attempts reached, attempting direct redirect');
+          setIsRedirecting(true);
         }
       }
     };
@@ -94,6 +126,12 @@ const CaptivePortal: React.FC = () => {
 
           {/* Status Section */}
           <div className="space-y-4 mb-8">
+            {/* Device Type Info */}
+            <div className="p-3 rounded-lg bg-gray-100 border border-gray-300">
+              <p className="text-xs text-gray-700 font-semibold">Device: {deviceType}</p>
+              <p className="text-xs text-gray-600">Attempts: {connectionAttempts}/30</p>
+            </div>
+
             {/* Connection Status */}
             <div className={`flex items-center gap-3 p-4 rounded-lg border ${
               isConnected 

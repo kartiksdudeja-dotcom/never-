@@ -10,7 +10,7 @@ import os
 import signal
 
 from config import config
-from database import init_database
+from database import init_database, init_pool
 
 # Import routes
 from routes.auth import auth_bp
@@ -86,6 +86,9 @@ def create_app(config_name='development'):
     """Application factory pattern"""
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+    
+    # Initialize connection pool for faster database access
+    init_pool()
     
     # Initialize extensions with permissive CORS for development
     if config_name == 'development':
@@ -247,6 +250,43 @@ def create_app(config_name='development'):
     @limiter.exempt
     def firefox_captive():
         """Firefox captive portal detection"""
+        return redirect(CAPTIVE_PORTAL_URL, code=302)
+
+    # Samsung-specific captive portal detection endpoints
+    @app.route('/warp/secure/check')
+    @limiter.exempt
+    def samsung_captive():
+        """Samsung Knox Vault captive portal detection"""
+        return redirect(CAPTIVE_PORTAL_URL, code=302)
+
+    @app.route('/samsungportal.html')
+    @limiter.exempt
+    def samsung_portal():
+        """Samsung portal page detection"""
+        return redirect(CAPTIVE_PORTAL_URL, code=302)
+
+    @app.route('/samsung/check.html')
+    @limiter.exempt
+    def samsung_check():
+        """Samsung check endpoint"""
+        return redirect(CAPTIVE_PORTAL_URL, code=302)
+
+    @app.route('/portal.php')
+    @limiter.exempt
+    def generic_portal():
+        """Generic portal detection"""
+        return redirect(CAPTIVE_PORTAL_URL, code=302)
+
+    @app.route('/mobile/status.html')
+    @limiter.exempt
+    def mobile_status():
+        """Mobile status detection"""
+        return redirect(CAPTIVE_PORTAL_URL, code=302)
+
+    @app.route('/is_portal.html')
+    @limiter.exempt
+    def is_portal():
+        """Portal status check"""
         return redirect(CAPTIVE_PORTAL_URL, code=302)
 
     @app.route('/captive-portal')

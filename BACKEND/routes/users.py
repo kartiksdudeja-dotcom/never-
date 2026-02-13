@@ -282,3 +282,104 @@ def delete_user(user_id):
             'success': False,
             'message': f'Failed to delete user: {str(e)}'
         }), 500
+
+@users_bp.route('/<int:user_id>', methods=['PUT'])
+@admin_required
+def update_user(user_id):
+    """Update user (admin only)"""
+    try:
+        data = request.get_json()
+        
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({
+                'success': False,
+                'message': 'Database connection failed'
+            }), 500
+        
+        cursor = connection.cursor(dictionary=True)
+        
+        # Check if user exists
+        cursor.execute("SELECT id, role FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.close()
+            connection.close()
+            return jsonify({
+                'success': False,
+                'message': 'User not found'
+            }), 404
+        
+        # Update fields
+        update_fields = []
+        update_values = []
+        
+        # Update role if provided
+        if 'role' in data and data['role'] in ['admin', 'user']:
+            update_fields.append("role = %s")
+            update_values.append(data['role'])
+        
+        # Update status if provided
+        if 'status' in data and data['status'] in ['active', 'inactive']:
+            update_fields.append("status = %s")
+            update_values.append(data['status'])
+        
+        # Update password if provided
+        if 'password' in data and data['password']:
+            is_valid, message = validate_password(data['password'])
+            if not is_valid:
+                cursor.close()
+                connection.close()
+                return jsonify({
+                    'success': False,
+                    'message': message
+                }), 400
+            
+            hashed_password = bcrypt.hashpw(
+                data['password'].encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+            update_fields.append("password = %s")
+            update_values.append(hashed_password)
+        
+        if not update_fields:
+            cursor.close()
+            connection.close()
+            return jsonify({
+                'success': False,
+                'message': 'No fields to update'
+            }), 400
+        
+        update_values.append(user_id)
+        
+        # Execute update
+        query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
+        cursor.execute(query, update_values)
+        connection.commit()
+        
+        # Fetch updated user
+        cursor.execute("""
+            SELECT id, user_id, role, status, created_at, updated_at 
+            FROM users WHERE id = %s
+        """, (user_id,))
+        updated_user = cursor.fetchone()
+        
+        cursor.close()
+        connection.close()
+        
+        # Convert datetime to string
+        updated_user['created_at'] = updated_user['created_at'].isoformat() if updated_user['created_at'] else None
+        updated_user['updated_at'] = updated_user['updated_at'].isoformat() if updated_user['updated_at'] else None
+        
+        return jsonify({
+            'success': True,
+            'message': 'User updated successfully',
+            'data': updated_user
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to update user: {str(e)}'
+        }), 500

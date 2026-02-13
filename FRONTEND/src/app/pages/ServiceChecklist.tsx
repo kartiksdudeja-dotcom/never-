@@ -198,6 +198,12 @@ export function ServiceChecklist({
       return;
     }
 
+    // Additional validation for date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(doneOn)) {
+      alert("Invalid date format. Please select a valid date.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const checklistPayload = checklistData.map((item) => ({
@@ -228,7 +234,10 @@ export function ServiceChecklist({
         }
       }
     } catch (err: any) {
-      alert(err.message || "Failed to submit checklist");
+      alert(
+        err.message ||
+          "Failed to submit checklist. Please ensure the date is valid."
+      );
     } finally {
       setIsSubmitting(false);
     }

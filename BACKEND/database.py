@@ -1,19 +1,37 @@
 import mysql.connector
-from mysql.connector import Error
+from mysql.connector import Error, pooling
 from config import Config
 
-def get_db_connection():
-    """Create and return a database connection"""
+# Connection pool for better performance
+_pool = None
+
+def init_pool():
+    """Initialize connection pool"""
+    global _pool
     try:
-        connection = mysql.connector.connect(
+        _pool = pooling.MySQLConnectionPool(
+            pool_name="ems_pool",
+            pool_size=5,
+            pool_reset_session=True,
             host=Config.DB_HOST,
             user=Config.DB_USER,
             password=Config.DB_PASSWORD,
             database=Config.DB_NAME
         )
-        return connection
+        print("✓ Connection pool initialized")
     except Error as e:
-        print(f"Error connecting to MySQL Database: {e}")
+        print(f"Error initializing pool: {e}")
+        _pool = None
+
+def get_db_connection():
+    """Get connection from pool"""
+    try:
+        global _pool
+        if _pool is None:
+            init_pool()
+        return _pool.get_connection() if _pool else None
+    except Error as e:
+        print(f"Error: {e}")
         return None
 
 

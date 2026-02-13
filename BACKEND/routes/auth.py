@@ -155,9 +155,10 @@ def login():
             }), 500
         
         cursor = connection.cursor(dictionary=True)
+        # Optimized query - LIMIT 1 for faster query execution
         cursor.execute("""
             SELECT id, user_id, password, role, status 
-            FROM users WHERE user_id = %s
+            FROM users WHERE user_id = %s LIMIT 1
         """, (user_id,))
         user = cursor.fetchone()
         

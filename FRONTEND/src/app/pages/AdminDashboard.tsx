@@ -213,6 +213,46 @@ export function AdminDashboard({
     }
   };
 
+  const handleStatusChange = async (userId: number, newStatus: string) => {
+    try {
+      const response = await usersAPI.update(userId, { status: newStatus });
+      if (response.success) {
+        await fetchData();
+      }
+    } catch (err: any) {
+      alert(err.message || `Failed to ${newStatus} user`);
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      const response = await usersAPI.delete(userId);
+      if (response.success) {
+        await fetchData();
+        alert("User deleted successfully");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to delete user");
+    }
+  };
+
+  const handleDeleteChecklistSubmission = async (report: any) => {
+    if (!window.confirm(`Delete checklist submission for Hanger ${report.hanger_no}? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      // We need to get the submission ID, but since the report doesn't have it,
+      // we'll need to fetch the details first or modify the backend
+      // For now, show an alert
+      alert("Delete feature requires backend modification to store submission IDs");
+    } catch (err: any) {
+      alert(err.message || "Failed to delete submission");
+    }
+  };
+
   const handleViewChecklistDetails = async (report: any) => {
     setReportDetailsLoading(true);
     try {
@@ -492,13 +532,34 @@ export function AdminDashboard({
                                   user.role === "admin" ? "user" : "admin"
                                 )
                               }
-                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors mr-2 ${
                                 user.role === "admin"
                                   ? "bg-red-100 text-red-700 hover:bg-red-200"
                                   : "bg-green-100 text-green-700 hover:bg-green-200"
                               }`}
                             >
                               {user.role === "admin" ? "Demote" : "Promote"}
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStatusChange(
+                                  user.id,
+                                  user.status === "active" ? "inactive" : "active"
+                                )
+                              }
+                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors mr-2 ${
+                                user.status === "active"
+                                  ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                                  : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                              }`}
+                            >
+                              {user.status === "active" ? "Deactivate" : "Activate"}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                            >
+                              Delete
                             </button>
                           </td>
                         </tr>
@@ -580,6 +641,9 @@ export function AdminDashboard({
                       <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
                         Status
                       </th>
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -647,13 +711,33 @@ export function AdminDashboard({
                                 {completionPercentage}% Done
                               </span>
                             </td>
+                            <td className="py-3 px-2 md:px-4 flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewChecklistDetails(report);
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteChecklistSubmission(report);
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </td>
                           </tr>
                         );
                       })
                     ) : (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={11}
                           className="py-8 px-4 text-center text-gray-500"
                         >
                           No checklist submissions found yet.

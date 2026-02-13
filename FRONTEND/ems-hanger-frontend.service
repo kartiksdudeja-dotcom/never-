@@ -10,13 +10,7 @@ WorkingDirectory=/home/vw/Downloads/EMS-HANGER-main/FRONTEND
 ExecStart=/usr/bin/npm --prefix /home/vw/Downloads/EMS-HANGER-main/FRONTEND run dev -- --host 0.0.0.0
 Restart=always
 RestartSec=10
-TimeoutStartSec=30
+TimeoutStartSec=60
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=ems-hanger-frontend
-
-[Install]
-WantedBy=multi-user.target
-
-[Install]
-WantedBy=multi-user.target

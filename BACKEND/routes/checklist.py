@@ -77,25 +77,41 @@ def get_hanger_checklist(hanger_no):
         """, (hanger_id,))
         checklist = cursor.fetchall()
         
+        # If no checklist for today, get the most recent one
         if not checklist:
-            # Return master checklist template with pending status
             cursor.execute("""
-                SELECT sr_no, activity, standard_value, image FROM service_checklist_master ORDER BY sr_no ASC
-            """)
-            master = cursor.fetchall()
-            checklist = [
-                {
-                    'sr_no': item['sr_no'],
-                    'activity': item['activity'],
-                    'status': 'pending',
-                    'remarks': '',
-                    'done_by': None,
-                    'done_on': None,
-                    'standard_value': item.get('standard_value', ''),
-                    'image': item.get('image', '')
-                }
-                for item in master
-            ]
+                SELECT sc.id, sc.sr_no, sc.activity, sc.status, sc.remarks, sc.done_by, sc.done_on,
+                       scm.standard_value, scm.image, DATE(sc.created_at) as checklist_date
+                FROM service_checklist sc
+                LEFT JOIN service_checklist_master scm ON sc.sr_no = scm.sr_no
+                WHERE sc.hanger_id = %s
+                ORDER BY sc.created_at DESC, sc.sr_no ASC
+                LIMIT 100
+            """, (hanger_id,))
+            recent_checklist = cursor.fetchall()
+            
+            if recent_checklist:
+                # Group by date and get only one date's data
+                checklist = recent_checklist
+            else:
+                # Return master checklist template with pending status
+                cursor.execute("""
+                    SELECT sr_no, activity, standard_value, image FROM service_checklist_master ORDER BY sr_no ASC
+                """)
+                master = cursor.fetchall()
+                checklist = [
+                    {
+                        'sr_no': item['sr_no'],
+                        'activity': item['activity'],
+                        'status': 'pending',
+                        'remarks': '',
+                        'done_by': None,
+                        'done_on': None,
+                        'standard_value': item.get('standard_value', ''),
+                        'image': item.get('image', '')
+                    }
+                    for item in master
+                ]
         else:
             for item in checklist:
                 item['done_on'] = item['done_on'].isoformat() if item['done_on'] else None
@@ -124,6 +140,8 @@ def get_hanger_checklist(hanger_no):
 def save_hanger_checklist(hanger_no):
     """Save/submit checklist for a hanger"""
     try:
+        from datetime import datetime
+        
         data = request.get_json()
         checklist_items = data.get('checklist', [])
         done_by = data.get('doneBy')
@@ -134,6 +152,18 @@ def save_hanger_checklist(hanger_no):
                 'success': False,
                 'message': 'Checklist items are required'
             }), 400
+        
+        # Validate and parse done_on date
+        if done_on:
+            try:
+                # Parse date in YYYY-MM-DD format
+                parsed_date = datetime.strptime(done_on, '%Y-%m-%d').date()
+                done_on = str(parsed_date)  # Convert back to string in proper format
+            except (ValueError, TypeError):
+                return jsonify({
+                    'success': False,
+                    'message': f'Invalid date format. Expected YYYY-MM-DD, got: {done_on}'
+                }), 400
         
         connection = get_db_connection()
         if not connection:
@@ -485,6 +515,8 @@ def get_barcode_hanger_checklist(hanger_no):
 def save_barcode_hanger_checklist(hanger_no):
     """Save barcode checklist for a hanger"""
     try:
+        from datetime import datetime
+        
         data = request.get_json()
         checklist_items = data.get('checklist', [])
         done_by = data.get('doneBy')
@@ -492,6 +524,18 @@ def save_barcode_hanger_checklist(hanger_no):
         
         if not checklist_items:
             return jsonify({'success': False, 'message': 'Checklist items are required'}), 400
+        
+        # Validate and parse done_on date
+        if done_on:
+            try:
+                # Parse date in YYYY-MM-DD format
+                parsed_date = datetime.strptime(done_on, '%Y-%m-%d').date()
+                done_on = str(parsed_date)  # Convert back to string in proper format
+            except (ValueError, TypeError):
+                return jsonify({
+                    'success': False,
+                    'message': f'Invalid date format. Expected YYYY-MM-DD, got: {done_on}'
+                }), 400
         
         connection = get_db_connection()
         if not connection:
@@ -619,6 +663,8 @@ def get_wheel_hanger_checklist(hanger_no):
 def save_wheel_hanger_checklist(hanger_no):
     """Save wheel checklist for a hanger"""
     try:
+        from datetime import datetime
+        
         data = request.get_json()
         checklist_items = data.get('checklist', [])
         done_by = data.get('doneBy')
@@ -626,6 +672,18 @@ def save_wheel_hanger_checklist(hanger_no):
         
         if not checklist_items:
             return jsonify({'success': False, 'message': 'Checklist items are required'}), 400
+        
+        # Validate and parse done_on date
+        if done_on:
+            try:
+                # Parse date in YYYY-MM-DD format
+                parsed_date = datetime.strptime(done_on, '%Y-%m-%d').date()
+                done_on = str(parsed_date)  # Convert back to string in proper format
+            except (ValueError, TypeError):
+                return jsonify({
+                    'success': False,
+                    'message': f'Invalid date format. Expected YYYY-MM-DD, got: {done_on}'
+                }), 400
         
         connection = get_db_connection()
         if not connection:
@@ -753,6 +811,8 @@ def get_checking_list_hanger_checklist(hanger_no):
 def save_checking_list_hanger_checklist(hanger_no):
     """Save checking list checklist for a hanger"""
     try:
+        from datetime import datetime
+        
         data = request.get_json()
         checklist_items = data.get('checklist', [])
         done_by = data.get('doneBy')
@@ -760,6 +820,18 @@ def save_checking_list_hanger_checklist(hanger_no):
         
         if not checklist_items:
             return jsonify({'success': False, 'message': 'Checklist items are required'}), 400
+        
+        # Validate and parse done_on date
+        if done_on:
+            try:
+                # Parse date in YYYY-MM-DD format
+                parsed_date = datetime.strptime(done_on, '%Y-%m-%d').date()
+                done_on = str(parsed_date)  # Convert back to string in proper format
+            except (ValueError, TypeError):
+                return jsonify({
+                    'success': False,
+                    'message': f'Invalid date format. Expected YYYY-MM-DD, got: {done_on}'
+                }), 400
         
         connection = get_db_connection()
         if not connection:
@@ -1243,3 +1315,123 @@ def delete_master_checklist_item(checklist_type, item_id):
         }), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to delete item: {str(e)}'}), 500
+
+# Admin endpoints for editing/deleting checklist submissions
+
+@checklist_bp.route('/submission/<int:submission_id>', methods=['PUT'])
+@jwt_required()
+def edit_checklist_submission(submission_id):
+    """Edit a checklist submission (admin only)"""
+    try:
+        from flask_jwt_extended import get_jwt
+        claims = get_jwt()
+        if claims.get('role') != 'admin':
+            return jsonify({'success': False, 'message': 'Admin access required'}), 403
+        
+        data = request.get_json()
+        
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cursor = connection.cursor(dictionary=True)
+        
+        # Check if submission exists
+        cursor.execute("SELECT id FROM service_checklist WHERE id = %s", (submission_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            connection.close()
+            return jsonify({'success': False, 'message': 'Submission not found'}), 404
+        
+        # Update fields
+        update_fields = []
+        update_values = []
+        
+        if 'status' in data and data['status'] in ['pending', 'done', 'failed']:
+            update_fields.append("status = %s")
+            update_values.append(data['status'])
+        
+        if 'remarks' in data:
+            update_fields.append("remarks = %s")
+            update_values.append(data['remarks'])
+        
+        if 'done_by' in data:
+            update_fields.append("done_by = %s")
+            update_values.append(data['done_by'])
+        
+        if 'done_on' in data:
+            update_fields.append("done_on = %s")
+            update_values.append(data['done_on'])
+        
+        if not update_fields:
+            cursor.close()
+            connection.close()
+            return jsonify({'success': False, 'message': 'No fields to update'}), 400
+        
+        update_values.append(submission_id)
+        query = f"UPDATE service_checklist SET {', '.join(update_fields)} WHERE id = %s"
+        cursor.execute(query, update_values)
+        connection.commit()
+        
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Submission updated successfully'
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to update submission: {str(e)}'}), 500
+
+
+@checklist_bp.route('/submission/<int:submission_id>', methods=['DELETE'])
+@jwt_required()
+def delete_checklist_submission(submission_id):
+    """Delete a checklist submission (admin only)"""
+    try:
+        from flask_jwt_extended import get_jwt
+        claims = get_jwt()
+        if claims.get('role') != 'admin':
+            return jsonify({'success': False, 'message': 'Admin access required'}), 403
+        
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cursor = connection.cursor(dictionary=True)
+        
+        # Check if submission exists and get hanger_id
+        cursor.execute("SELECT hanger_id FROM service_checklist WHERE id = %s", (submission_id,))
+        submission = cursor.fetchone()
+        
+        if not submission:
+            cursor.close()
+            connection.close()
+            return jsonify({'success': False, 'message': 'Submission not found'}), 404
+        
+        hanger_id = submission['hanger_id']
+        
+        # Delete the submission
+        cursor.execute("DELETE FROM service_checklist WHERE id = %s", (submission_id,))
+        
+        # Check if there are any other submissions for this hanger
+        cursor.execute("SELECT COUNT(*) as count FROM service_checklist WHERE hanger_id = %s", (hanger_id,))
+        remaining_count = cursor.fetchone()['count']
+        
+        # If no more submissions and hanger was 'needed', reset to 'none'
+        if remaining_count == 0:
+            cursor.execute("SELECT status FROM hangers WHERE id = %s", (hanger_id,))
+            hanger = cursor.fetchone()
+            if hanger and hanger['status'] == 'needed':
+                cursor.execute("UPDATE hangers SET status = 'none' WHERE id = %s", (hanger_id,))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Submission deleted successfully'
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to delete submission: {str(e)}'}), 500

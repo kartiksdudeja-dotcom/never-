@@ -97,13 +97,13 @@ export function HangerServicing({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "done":
-        return "bg-green-500";
+        return "bg-green-500 text-white";
       case "needed":
-        return "bg-red-500";
+        return "bg-red-500 text-white";
       case "none":
-        return "bg-white border-2 border-gray-300";
+        return "bg-white border-2 border-gray-300 text-gray-800";
       default:
-        return "bg-gray-300";
+        return "bg-gray-300 text-gray-800";
     }
   };
 
@@ -249,7 +249,7 @@ export function HangerServicing({
                   }`}
                   title={`Hanger ${hanger.hanger_no} - ${hanger.status}`}
                 >
-                  <span className="text-xs md:text-sm font-bold text-gray-800">
+                  <span className="text-xs md:text-sm font-bold">
                     {hanger.hanger_no}
                   </span>
                 </div>

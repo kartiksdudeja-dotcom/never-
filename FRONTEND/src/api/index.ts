@@ -52,8 +52,55 @@ const sanitizeInput = (input: string): string => {
   return input.replace(/[<>\"']/g, "").trim();
 };
 
-// Base fetch function with auth
-const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
+// Simple cache for API responses
+const apiCache = new Map<
+  string,
+  { data: any; timestamp: number; ttl: number }
+>();
+
+// Cache TTL in milliseconds (default 5 minutes)
+const DEFAULT_CACHE_TTL = 5 * 60 * 1000;
+
+const getCachedResponse = (
+  key: string
+): any | null => {
+  const cached = apiCache.get(key);
+  if (!cached) return null;
+
+  const age = Date.now() - cached.timestamp;
+  if (age > cached.ttl) {
+    apiCache.delete(key);
+    return null;
+  }
+
+  log(`[CACHE HIT] ${key}`);
+  return cached.data;
+};
+
+const setCachedResponse = (
+  key: string,
+  data: any,
+  ttl: number = DEFAULT_CACHE_TTL
+) => {
+  apiCache.set(key, { data, timestamp: Date.now(), ttl });
+};
+
+// Base fetch function with auth and caching
+const fetchWithAuth = async (
+  endpoint: string,
+  options: RequestInit = {},
+  cacheKey?: string,
+  cacheTTL?: number
+) => {
+  // Check cache for GET requests
+  if (!options.method || options.method === "GET") {
+    const cacheKeyToUse = cacheKey || endpoint;
+    const cached = getCachedResponse(cacheKeyToUse);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const token = getToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -123,9 +170,21 @@ const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
   }
 };
 
+// Clear cache for specific endpoint
+export const clearCache = (endpoint?: string) => {
+  if (endpoint) {
+    apiCache.delete(endpoint);
+  } else {
+    apiCache.clear();
+  }
+};
+
 // Auth API
 export const authAPI = {
   login: async (userId: string, password: string) => {
+    // Clear cache on login for fresh data
+    clearCache();
+    
     // Sanitize inputs
     const sanitizedUserId = sanitizeInput(userId);
 
@@ -259,6 +318,26 @@ export const checklistAPI = {
     doneBy: string,
     doneOn: string
   ) => {
+    // Validate date format YYYY-MM-DD
+    if (!doneOn || !/^\d{4}-\d{2}-\d{2}$/.test(doneOn)) {
+      throw new Error(
+        `Invalid date format. Expected YYYY-MM-DD, got: ${doneOn}`
+      );
+    }
+
+    // Validate that the date is valid (e.g., not Jan 32)
+    const dateObj = new Date(doneOn + "T00:00:00Z");
+    const [year, month, day] = doneOn.split("-").map(Number);
+    if (
+      dateObj.getUTCFullYear() !== year ||
+      dateObj.getUTCMonth() + 1 !== month ||
+      dateObj.getUTCDate() !== day
+    ) {
+      throw new Error(
+        `Invalid date: ${doneOn} is not a valid calendar date`
+      );
+    }
+
     return fetchWithAuth(`/checklist/hanger/${hangerNo}`, {
       method: "POST",
       body: JSON.stringify({ checklist, doneBy, doneOn }),
@@ -309,6 +388,28 @@ export const checklistAPI = {
 
   deleteMasterItem: async (checklistType: string, itemId: number) => {
     return fetchWithAuth(`/checklist/master/${checklistType}/${itemId}`, {
+      method: "DELETE",
+    });
+  },
+
+  // Admin endpoints for managing submissions
+  editSubmission: async (
+    submissionId: number,
+    data: {
+      status?: string;
+      remarks?: string;
+      done_by?: string;
+      done_on?: string;
+    }
+  ) => {
+    return fetchWithAuth(`/checklist/submission/${submissionId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteSubmission: async (submissionId: number) => {
+    return fetchWithAuth(`/checklist/submission/${submissionId}`, {
       method: "DELETE",
     });
   },
@@ -483,11 +584,23 @@ export const activityAPI = {
 // Dashboard API
 export const dashboardAPI = {
   getAdmin: async () => {
-    return fetchWithAuth("/dashboard/admin");
+    // Cache admin dashboard for 3 minutes
+    return fetchWithAuth(
+      "/dashboard/admin",
+      {},
+      "dashboard/admin",
+      3 * 60 * 1000
+    );
   },
 
   getUser: async () => {
-    return fetchWithAuth("/dashboard/user");
+    // Cache user dashboard for 2 minutes
+    return fetchWithAuth(
+      "/dashboard/user",
+      {},
+      "dashboard/user",
+      2 * 60 * 1000
+    );
   },
 };
 

@@ -2,6 +2,7 @@
 Description=EMS Hanger Backend Service
 After=network.target mysql.service
 Wants=network-online.target
+Requires=mysql.service
 
 [Service]
 Type=simple
@@ -15,9 +16,3 @@ Environment="FLASK_ENV=production"
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=ems-hanger-backend
-
-[Install]
-WantedBy=multi-user.target
-
-[Install]
-WantedBy=multi-user.target
