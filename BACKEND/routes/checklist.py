@@ -957,6 +957,12 @@ def get_barcode_checklist_report():
             LIMIT 500
         """)
         report = cursor.fetchall()
+        
+        # Format date to YYYY-MM-DD string to ensure proper frontend and detail queries serialization
+        for row in report:
+            if row.get('submission_date'):
+                row['submission_date'] = row['submission_date'].strftime('%Y-%m-%d')
+                
         cursor.close()
         connection.close()
         
@@ -975,6 +981,19 @@ def get_barcode_checklist_report_details():
         
         if not hanger_no or not submission_date:
             return jsonify({'success': False, 'message': 'Hanger number and submission date required'}), 400
+            
+        # Parse and standardize submission_date format
+        from datetime import datetime
+        try:
+            parsed_date = datetime.strptime(submission_date.split('T')[0].split(' ')[0], '%Y-%m-%d').date()
+            submission_date = str(parsed_date)
+        except Exception:
+            try:
+                import email.utils
+                parsed_dt = email.utils.parsedate_to_datetime(submission_date)
+                submission_date = parsed_dt.date().strftime('%Y-%m-%d')
+            except Exception:
+                pass
         
         connection = get_db_connection()
         if not connection:
@@ -997,6 +1016,11 @@ def get_barcode_checklist_report_details():
         details = cursor.fetchall()
         cursor.close()
         connection.close()
+        
+        # Format items done_on and other date values to string format for clean serialization
+        for item in details:
+            if item.get('done_on'):
+                item['done_on'] = item['done_on'].strftime('%Y-%m-%d')
         
         return jsonify({'success': True, 'data': details}), 200
     except Exception as e:
@@ -1031,6 +1055,12 @@ def get_wheel_checklist_report():
             LIMIT 500
         """)
         report = cursor.fetchall()
+        
+        # Format date to YYYY-MM-DD string to ensure proper frontend and detail queries serialization
+        for row in report:
+            if row.get('submission_date'):
+                row['submission_date'] = row['submission_date'].strftime('%Y-%m-%d')
+                
         cursor.close()
         connection.close()
         
@@ -1049,6 +1079,19 @@ def get_wheel_checklist_report_details():
         
         if not hanger_no or not submission_date:
             return jsonify({'success': False, 'message': 'Hanger number and submission date required'}), 400
+            
+        # Parse and standardize submission_date format
+        from datetime import datetime
+        try:
+            parsed_date = datetime.strptime(submission_date.split('T')[0].split(' ')[0], '%Y-%m-%d').date()
+            submission_date = str(parsed_date)
+        except Exception:
+            try:
+                import email.utils
+                parsed_dt = email.utils.parsedate_to_datetime(submission_date)
+                submission_date = parsed_dt.date().strftime('%Y-%m-%d')
+            except Exception:
+                pass
         
         connection = get_db_connection()
         if not connection:
@@ -1071,6 +1114,11 @@ def get_wheel_checklist_report_details():
         details = cursor.fetchall()
         cursor.close()
         connection.close()
+        
+        # Format items done_on and other date values to string format for clean serialization
+        for item in details:
+            if item.get('done_on'):
+                item['done_on'] = item['done_on'].strftime('%Y-%m-%d')
         
         return jsonify({'success': True, 'data': details}), 200
     except Exception as e:
@@ -1105,6 +1153,12 @@ def get_checking_list_checklist_report():
             LIMIT 500
         """)
         report = cursor.fetchall()
+        
+        # Format date to YYYY-MM-DD string to ensure proper frontend and detail queries serialization
+        for row in report:
+            if row.get('submission_date'):
+                row['submission_date'] = row['submission_date'].strftime('%Y-%m-%d')
+                
         cursor.close()
         connection.close()
         
@@ -1123,6 +1177,19 @@ def get_checking_list_checklist_report_details():
         
         if not hanger_no or not submission_date:
             return jsonify({'success': False, 'message': 'Hanger number and submission date required'}), 400
+            
+        # Parse and standardize submission_date format
+        from datetime import datetime
+        try:
+            parsed_date = datetime.strptime(submission_date.split('T')[0].split(' ')[0], '%Y-%m-%d').date()
+            submission_date = str(parsed_date)
+        except Exception:
+            try:
+                import email.utils
+                parsed_dt = email.utils.parsedate_to_datetime(submission_date)
+                submission_date = parsed_dt.date().strftime('%Y-%m-%d')
+            except Exception:
+                pass
         
         connection = get_db_connection()
         if not connection:
@@ -1145,6 +1212,11 @@ def get_checking_list_checklist_report_details():
         details = cursor.fetchall()
         cursor.close()
         connection.close()
+        
+        # Format items done_on and other date values to string format for clean serialization
+        for item in details:
+            if item.get('done_on'):
+                item['done_on'] = item['done_on'].strftime('%Y-%m-%d')
         
         return jsonify({'success': True, 'data': details}), 200
     except Exception as e:

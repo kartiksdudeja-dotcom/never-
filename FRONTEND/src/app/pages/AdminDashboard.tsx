@@ -37,6 +37,38 @@ interface DashboardStats {
   userCount?: number;
 }
 
+const formatDateSafe = (dateStr: any, type: "short" | "long" = "short") => {
+  if (!dateStr) return "N/A";
+  try {
+    let dateObj: Date;
+    if (dateStr instanceof Date) {
+      dateObj = dateStr;
+    } else {
+      const cleanStr = String(dateStr).split('T')[0].split(' ')[0];
+      const parts = cleanStr.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        dateObj = new Date(year, month, day);
+      } else {
+        dateObj = new Date(dateStr);
+      }
+    }
+    
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: type === "short" ? "short" : "long",
+        day: "numeric",
+      });
+    }
+  } catch (e) {
+    console.error("Date formatting error:", e);
+  }
+  return String(dateStr);
+};
+
 export function AdminDashboard({
   onLogout,
   onBack,
@@ -463,7 +495,7 @@ export function AdminDashboard({
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6"
         >
           {/* Tab Navigation */}
-          <div className="flex gap-2 md:gap-4 mb-6 border-b border-gray-200 overflow-x-auto">
+          <div className="flex gap-2 md:gap-4 mb-6 border-b border-gray-200 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <button
               onClick={() => setActiveTab("users")}
               className={`px-3 md:px-4 py-3 font-semibold text-xs md:text-base transition-colors border-b-2 whitespace-nowrap ${
@@ -526,19 +558,19 @@ export function AdminDashboard({
                 <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         User ID
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Role
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Status
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Actions
                       </th>
                     </tr>
@@ -548,15 +580,15 @@ export function AdminDashboard({
                       users.map((user, index) => (
                         <tr
                           key={user.id}
-                          className="border-b border-gray-100 hover:bg-gray-50"
+                          className="border-b border-gray-100 hover:bg-gray-55"
                         >
-                          <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
+                          <td className="py-3 px-2 md:px-4 text-gray-600 text-sm whitespace-nowrap">
                             {index + 1}
                           </td>
-                          <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm">
+                          <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm whitespace-nowrap">
                             {user.user_id}
                           </td>
-                          <td className="py-3 px-2 md:px-4">
+                          <td className="py-3 px-2 md:px-4 whitespace-nowrap">
                             <span
                               className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
                                 user.role === "admin"
@@ -567,7 +599,7 @@ export function AdminDashboard({
                               {user.role === "admin" ? "Admin" : "User"}
                             </span>
                           </td>
-                          <td className="py-3 px-2 md:px-4">
+                          <td className="py-3 px-2 md:px-4 whitespace-nowrap">
                             <span
                               className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
                                 user.status === "active"
@@ -578,43 +610,45 @@ export function AdminDashboard({
                               {user.status === "active" ? "Active" : "Inactive"}
                             </span>
                           </td>
-                          <td className="py-3 px-2 md:px-4">
-                            <button
-                              onClick={() =>
-                                handleRoleChange(
-                                  user.id,
-                                  user.role === "admin" ? "user" : "admin"
-                                )
-                              }
-                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors mr-2 ${
-                                user.role === "admin"
-                                  ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                  : "bg-green-100 text-green-700 hover:bg-green-200"
-                              }`}
-                            >
-                              {user.role === "admin" ? "Demote" : "Promote"}
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleStatusChange(
-                                  user.id,
-                                  user.status === "active" ? "inactive" : "active"
-                                )
-                              }
-                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors mr-2 ${
-                                user.status === "active"
-                                  ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                                  : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                              }`}
-                            >
-                              {user.status === "active" ? "Deactivate" : "Activate"}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                            >
-                              Delete
-                            </button>
+                          <td className="py-3 px-2 md:px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() =>
+                                  handleRoleChange(
+                                    user.id,
+                                    user.role === "admin" ? "user" : "admin"
+                                  )
+                                }
+                                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                  user.role === "admin"
+                                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                    : "bg-green-100 text-green-700 hover:bg-green-200"
+                                }`}
+                              >
+                                {user.role === "admin" ? "Demote" : "Promote"}
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleStatusChange(
+                                    user.id,
+                                    user.status === "active" ? "inactive" : "active"
+                                  )
+                                }
+                                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                  user.status === "active"
+                                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                                    : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                }`}
+                              >
+                                {user.status === "active" ? "Deactivate" : "Activate"}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -668,34 +702,34 @@ export function AdminDashboard({
                 <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Hanger #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Submitted By
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Date
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Total Items
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Completed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Failed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Pending
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Status
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Actions
                       </th>
                     </tr>
@@ -728,62 +762,58 @@ export function AdminDashboard({
                             onClick={() => handleViewChecklistDetails(report, "service")}
                             className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
-                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm whitespace-nowrap">
                               {index + 1}
                             </td>
-                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm">
+                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm whitespace-nowrap">
                               {report.hanger_no}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
                               {report.submitted_by}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
-                              {new Date(
-                                report.submission_date
-                              ).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
+                              {formatDateSafe(report.submission_date, "short")}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold whitespace-nowrap">
                               {report.total_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold whitespace-nowrap">
                               {report.completed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold whitespace-nowrap">
                               {report.failed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold whitespace-nowrap">
                               {report.pending_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4">
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap">
                               <span
                                 className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${statusColor}`}
                               >
                                 {completionPercentage}% Done
                               </span>
                             </td>
-                            <td className="py-3 px-2 md:px-4 flex gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewChecklistDetails(report, "service");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteChecklistSubmission(report, "service");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                              >
-                                Delete
-                              </button>
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewChecklistDetails(report, "service");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteChecklistSubmission(report, "service");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -814,34 +844,34 @@ export function AdminDashboard({
                 <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Hanger #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Submitted By
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Date
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Total
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Completed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Failed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Pending
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Status
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Actions
                       </th>
                     </tr>
@@ -872,64 +902,58 @@ export function AdminDashboard({
                             onClick={() => handleViewChecklistDetails(report, "barcode")}
                             className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
-                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm whitespace-nowrap">
                               {index + 1}
                             </td>
-                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm">
+                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm whitespace-nowrap">
                               {report.hanger_no}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
                               {report.submitted_by || "N/A"}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
-                              {report.submission_date
-                                ? new Date(
-                                    report.submission_date
-                                  ).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  })
-                                : "N/A"}
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
+                              {formatDateSafe(report.submission_date, "short")}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold whitespace-nowrap">
                               {report.total_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold whitespace-nowrap">
                               {report.completed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold whitespace-nowrap">
                               {report.failed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold whitespace-nowrap">
                               {report.pending_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4">
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap">
                               <span
                                 className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${statusColor}`}
                               >
                                 {completionPercentage}% Done
                               </span>
                             </td>
-                            <td className="py-3 px-2 md:px-4 flex gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewChecklistDetails(report, "barcode");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteChecklistSubmission(report, "barcode");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                              >
-                                Delete
-                              </button>
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewChecklistDetails(report, "barcode");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteChecklistSubmission(report, "barcode");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -960,34 +984,34 @@ export function AdminDashboard({
                 <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Hanger #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Submitted By
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Date
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Total
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Completed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Failed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Pending
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Status
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Actions
                       </th>
                     </tr>
@@ -1018,64 +1042,58 @@ export function AdminDashboard({
                             onClick={() => handleViewChecklistDetails(report, "wheel")}
                             className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
-                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm whitespace-nowrap">
                               {index + 1}
                             </td>
-                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm">
+                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm whitespace-nowrap">
                               {report.hanger_no}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
                               {report.submitted_by || "N/A"}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
-                              {report.submission_date
-                                ? new Date(
-                                    report.submission_date
-                                  ).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  })
-                                : "N/A"}
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
+                              {formatDateSafe(report.submission_date, "short")}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold whitespace-nowrap">
                               {report.total_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold whitespace-nowrap">
                               {report.completed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold whitespace-nowrap">
                               {report.failed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold whitespace-nowrap">
                               {report.pending_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4">
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap">
                               <span
                                 className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${statusColor}`}
                               >
                                 {completionPercentage}% Done
                               </span>
                             </td>
-                            <td className="py-3 px-2 md:px-4 flex gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewChecklistDetails(report, "wheel");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteChecklistSubmission(report, "wheel");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                              >
-                                Delete
-                              </button>
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewChecklistDetails(report, "wheel");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteChecklistSubmission(report, "wheel");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1106,34 +1124,34 @@ export function AdminDashboard({
                 <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Hanger #
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Submitted By
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Date
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Total
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Completed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Failed
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Pending
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Status
                       </th>
-                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm whitespace-nowrap">
                         Actions
                       </th>
                     </tr>
@@ -1164,64 +1182,58 @@ export function AdminDashboard({
                             onClick={() => handleViewChecklistDetails(report, "checkingList")}
                             className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
-                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-600 text-sm whitespace-nowrap">
                               {index + 1}
                             </td>
-                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm">
+                            <td className="py-3 px-2 md:px-4 font-medium text-gray-800 text-sm whitespace-nowrap">
                               {report.hanger_no}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
                               {report.submitted_by || "N/A"}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm">
-                              {report.submission_date
-                                ? new Date(
-                                    report.submission_date
-                                  ).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  })
-                                : "N/A"}
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm whitespace-nowrap">
+                              {formatDateSafe(report.submission_date, "short")}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-gray-700 text-sm font-semibold whitespace-nowrap">
                               {report.total_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-green-700 text-sm font-semibold whitespace-nowrap">
                               {report.completed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-red-700 text-sm font-semibold whitespace-nowrap">
                               {report.failed_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold">
+                            <td className="py-3 px-2 md:px-4 text-yellow-700 text-sm font-semibold whitespace-nowrap">
                               {report.pending_items}
                             </td>
-                            <td className="py-3 px-2 md:px-4">
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap">
                               <span
                                 className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${statusColor}`}
                               >
                                 {completionPercentage}% Done
                               </span>
                             </td>
-                            <td className="py-3 px-2 md:px-4 flex gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewChecklistDetails(report, "checkingList");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteChecklistSubmission(report, "checkingList");
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                              >
-                                Delete
-                              </button>
+                            <td className="py-3 px-2 md:px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewChecklistDetails(report, "checkingList");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteChecklistSubmission(report, "checkingList");
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1341,13 +1353,7 @@ export function AdminDashboard({
                   </span>
                 </p>
                 <p className="text-xs md:text-sm text-gray-500 mt-1">
-                  {new Date(
-                    selectedReportDetails.submission_date
-                  ).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {formatDateSafe(selectedReportDetails.submission_date, "long")}
                 </p>
               </div>
               <button
