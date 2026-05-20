@@ -13,6 +13,7 @@ import {
   barcodeChecklistAPI,
   wheelChecklistAPI,
   checkingListChecklistAPI,
+  clearCache,
 } from "../../api";
 
 interface AdminDashboardProps {
@@ -69,24 +70,19 @@ export function AdminDashboard({
 
    
   // Fetch users and dashboard stats on mount
-useEffect(() => {
-  fetchData(); // one time load
+  useEffect(() => {
+    fetchData(); // one time load
 
- socket.on("activity-update", (payload: any) => {
+    socket.on("data_updated", (payload: any) => {
+      console.log("Realtime update received", payload);
+      clearCache();
+      fetchData();
+    });
 
-    console.log("Realtime update received", payload);
-
-    if (payload?.type === "checklist") {
-      checklistAPI.getReport().then(res => {
-        if (res.success) setChecklistReports(res.data);
-      });
-    }
-  });
-
-  return () => {
-    socket.off("data_updated");
-  };
-}, []);
+    return () => {
+      socket.off("data_updated");
+    };
+  }, []);
 
 
 
@@ -213,6 +209,7 @@ useEffect(() => {
     try {
       const response = await usersAPI.update(userId, { role: newRole });
       if (response.success) {
+        clearCache();
         await fetchData();
       }
     } catch (err: any) {
@@ -227,6 +224,7 @@ useEffect(() => {
     try {
       const response = await usersAPI.update(userId, { status: newStatus });
       if (response.success) {
+        clearCache();
         await fetchData();
       }
     } catch (err: any) {
@@ -241,6 +239,7 @@ useEffect(() => {
     try {
       const response = await usersAPI.delete(userId);
       if (response.success) {
+        clearCache();
         await fetchData();
         alert("User deleted successfully");
       }
@@ -249,34 +248,79 @@ useEffect(() => {
     }
   };
 
-  const handleDeleteChecklistSubmission = async (report: any) => {
-    if (!window.confirm(`Delete checklist submission for Hanger ${report.hanger_no}? This action cannot be undone.`)) {
+  const handleDeleteChecklistSubmission = async (report: any, type: "service" | "barcode" | "wheel" | "checkingList") => {
+    const titleMap = {
+      service: "Service",
+      barcode: "Barcode",
+      wheel: "Wheel",
+      checkingList: "Checking List"
+    };
+    if (!window.confirm(`Delete ${titleMap[type]} checklist submission for Hanger ${report.hanger_no} on ${new Date(report.submission_date).toLocaleDateString()}? This action cannot be undone.`)) {
       return;
     }
     try {
-      // We need to get the submission ID, but since the report doesn't have it,
-      // we'll need to fetch the details first or modify the backend
-      // For now, show an alert
-      alert("Delete feature requires backend modification to store submission IDs");
+      const backendTypeMap = {
+        service: "service",
+        barcode: "barcode",
+        wheel: "wheel",
+        checkingList: "checking-list"
+      };
+      const response = await checklistAPI.deleteSubmissionByDetails(
+        backendTypeMap[type],
+        report.hanger_no,
+        report.submission_date,
+        report.submitted_by || "N/A"
+      );
+      if (response.success) {
+        clearCache();
+        await fetchData();
+        alert("Submission deleted successfully");
+      } else {
+        alert(response.message || "Failed to delete submission");
+      }
     } catch (err: any) {
       alert(err.message || "Failed to delete submission");
     }
   };
 
-  const handleViewChecklistDetails = async (report: any) => {
+  const handleViewChecklistDetails = async (report: any, type: "service" | "barcode" | "wheel" | "checkingList") => {
     setReportDetailsLoading(true);
     try {
-      const response = await checklistAPI.getReportDetails(
-        report.hanger_no.toString(),
-        report.submission_date,
-        report.submitted_by
-      );
+      let response;
+      if (type === "service") {
+        response = await checklistAPI.getReportDetails(
+          report.hanger_no.toString(),
+          report.submission_date,
+          report.submitted_by
+        );
+      } else if (type === "barcode") {
+        response = await barcodeChecklistAPI.getReportDetails(
+          report.hanger_no.toString(),
+          report.submission_date
+        );
+      } else if (type === "wheel") {
+        response = await wheelChecklistAPI.getReportDetails(
+          report.hanger_no.toString(),
+          report.submission_date
+        );
+      } else if (type === "checkingList") {
+        response = await checkingListChecklistAPI.getReportDetails(
+          report.hanger_no.toString(),
+          report.submission_date
+        );
+      }
 
-      if (response.success) {
-        setSelectedReportDetails(response.data);
-        console.log("Checklist details:", response.data);
+      if (response && response.success) {
+        const details = response.data.items ? response.data : {
+          hanger_no: report.hanger_no,
+          submission_date: report.submission_date,
+          submitted_by: report.submitted_by || "N/A",
+          items: response.data
+        };
+        setSelectedReportDetails(details);
+        console.log(`${type} checklist details:`, details);
       } else {
-        alert(response.message || "Failed to fetch checklist details");
+        alert(response?.message || "Failed to fetch checklist details");
       }
     } catch (err: any) {
       console.error("Error fetching checklist details:", err);
@@ -681,7 +725,7 @@ useEffect(() => {
                         return (
                           <tr
                             key={`${report.hanger_no}-${report.submission_date}-${report.submitted_by}-${index}`}
-                            onClick={() => handleViewChecklistDetails(report)}
+                            onClick={() => handleViewChecklistDetails(report, "service")}
                             className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
                             <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
@@ -725,7 +769,7 @@ useEffect(() => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleViewChecklistDetails(report);
+                                  handleViewChecklistDetails(report, "service");
                                 }}
                                 className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
                               >
@@ -734,7 +778,7 @@ useEffect(() => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteChecklistSubmission(report);
+                                  handleDeleteChecklistSubmission(report, "service");
                                 }}
                                 className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
                               >
@@ -797,6 +841,9 @@ useEffect(() => {
                       <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
                         Status
                       </th>
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -822,7 +869,8 @@ useEffect(() => {
                         return (
                           <tr
                             key={`barcode-${report.hanger_no}-${report.submission_date}-${index}`}
-                            className="border-b border-gray-100 hover:bg-gray-100"
+                            onClick={() => handleViewChecklistDetails(report, "barcode")}
+                            className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
                             <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
                               {index + 1}
@@ -863,13 +911,33 @@ useEffect(() => {
                                 {completionPercentage}% Done
                               </span>
                             </td>
+                            <td className="py-3 px-2 md:px-4 flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewChecklistDetails(report, "barcode");
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteChecklistSubmission(report, "barcode");
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </td>
                           </tr>
                         );
                       })
                     ) : (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={10}
                           className="py-8 px-4 text-center text-gray-500"
                         >
                           No barcode checklist submissions found yet.
@@ -919,6 +987,9 @@ useEffect(() => {
                       <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
                         Status
                       </th>
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -944,7 +1015,8 @@ useEffect(() => {
                         return (
                           <tr
                             key={`wheel-${report.hanger_no}-${report.submission_date}-${index}`}
-                            className="border-b border-gray-100 hover:bg-gray-100"
+                            onClick={() => handleViewChecklistDetails(report, "wheel")}
+                            className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
                             <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
                               {index + 1}
@@ -985,13 +1057,33 @@ useEffect(() => {
                                 {completionPercentage}% Done
                               </span>
                             </td>
+                            <td className="py-3 px-2 md:px-4 flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewChecklistDetails(report, "wheel");
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteChecklistSubmission(report, "wheel");
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </td>
                           </tr>
                         );
                       })
                     ) : (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={10}
                           className="py-8 px-4 text-center text-gray-500"
                         >
                           No wheel checklist submissions found yet.
@@ -1041,6 +1133,9 @@ useEffect(() => {
                       <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
                         Status
                       </th>
+                      <th className="text-left py-3 px-2 md:px-4 text-gray-600 font-semibold text-sm">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1066,7 +1161,8 @@ useEffect(() => {
                         return (
                           <tr
                             key={`checking-${report.hanger_no}-${report.submission_date}-${index}`}
-                            className="border-b border-gray-100 hover:bg-gray-100"
+                            onClick={() => handleViewChecklistDetails(report, "checkingList")}
+                            className="border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors"
                           >
                             <td className="py-3 px-2 md:px-4 text-gray-600 text-sm">
                               {index + 1}
@@ -1107,13 +1203,33 @@ useEffect(() => {
                                 {completionPercentage}% Done
                               </span>
                             </td>
+                            <td className="py-3 px-2 md:px-4 flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewChecklistDetails(report, "checkingList");
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteChecklistSubmission(report, "checkingList");
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </td>
                           </tr>
                         );
                       })
                     ) : (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={10}
                           className="py-8 px-4 text-center text-gray-500"
                         >
                           No checking list submissions found yet.

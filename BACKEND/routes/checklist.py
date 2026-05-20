@@ -1479,3 +1479,76 @@ def delete_checklist_submission(submission_id):
         }), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to delete submission: {str(e)}'}), 500
+
+
+@checklist_bp.route('/submission/<string:checklist_type>', methods=['DELETE'])
+@jwt_required()
+def delete_submission_by_details(checklist_type):
+    """Delete a checklist submission group by details (admin only)"""
+    try:
+        from flask_jwt_extended import get_jwt
+        claims = get_jwt()
+        if claims.get('role') != 'admin':
+            return jsonify({'success': False, 'message': 'Admin access required'}), 403
+        
+        hanger_no = request.args.get('hanger_no')
+        submission_date = request.args.get('date')
+        submitted_by = request.args.get('user')
+        
+        if not hanger_no or not submission_date or not submitted_by:
+            return jsonify({'success': False, 'message': 'Hanger number, date, and user required'}), 400
+        
+        # Map checklist type to table name
+        table_map = {
+            'service': 'service_checklist',
+            'barcode': 'barcode_checklist',
+            'wheel': 'wheel_checklist',
+            'checking-list': 'checking_list_checklist'
+        }
+        
+        if checklist_type not in table_map:
+            return jsonify({'success': False, 'message': 'Invalid checklist type'}), 400
+            
+        table_name = table_map[checklist_type]
+        
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+            
+        cursor = connection.cursor(dictionary=True)
+        
+        # Get hanger id
+        cursor.execute("SELECT id FROM hangers WHERE hanger_no = %s", (hanger_no,))
+        hanger = cursor.fetchone()
+        
+        if not hanger:
+            cursor.close()
+            connection.close()
+            return jsonify({'success': False, 'message': 'Hanger not found'}), 404
+            
+        hanger_id = hanger['id']
+        
+        # Delete matching rows
+        cursor.execute(f"""
+            DELETE FROM {table_name} 
+            WHERE hanger_id = %s AND DATE(created_at) = %s AND done_by = %s
+        """, (hanger_id, submission_date, submitted_by))
+        
+        # Re-evaluate hanger status based on remaining entries across all checklists if needed,
+        # but for simplicity reset to 'none' if no submissions left of this type
+        cursor.execute(f"SELECT COUNT(*) as count FROM {table_name} WHERE hanger_id = %s", (hanger_id,))
+        remaining_count = cursor.fetchone()['count']
+        
+        if remaining_count == 0:
+            cursor.execute("UPDATE hangers SET status = 'none' WHERE id = %s", (hanger_id,))
+            
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'{checklist_type.capitalize()} checklist submission deleted successfully'
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to delete submission: {str(e)}'}), 500

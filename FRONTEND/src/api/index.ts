@@ -174,6 +174,11 @@ const fetchWithAuth = async (
         throw new Error(data.message || "Request failed");
       }
 
+      // Clear cache on successful mutation (POST, PUT, DELETE)
+      if (method !== "GET") {
+        clearCache();
+      }
+
       // Save cache if GET
       if (!options.method || options.method === "GET") {
         const key = cacheKey || endpoint;
@@ -451,6 +456,25 @@ export const checklistAPI = {
     return fetchWithAuth(`/checklist/submission/${submissionId}`, {
       method: "DELETE",
     });
+  },
+
+  deleteSubmissionByDetails: async (
+    checklistType: string,
+    hangerNo: number,
+    date: string,
+    user: string
+  ) => {
+    const params = new URLSearchParams({
+      hanger_no: hangerNo.toString(),
+      date,
+      user,
+    });
+    return fetchWithAuth(
+      `/checklist/submission/${checklistType}?${params.toString()}`,
+      {
+        method: "DELETE",
+      }
+    );
   },
 };
 
