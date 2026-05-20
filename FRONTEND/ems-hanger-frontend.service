@@ -14,3 +14,5 @@ TimeoutStartSec=60
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=ems-hanger-frontend
+[Install]
+WantedBy=multi-user.target

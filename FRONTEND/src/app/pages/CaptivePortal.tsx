@@ -48,33 +48,59 @@ const CaptivePortal: React.FC = () => {
     const checkConnection = async () => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const response = await fetch(`${API_BASE}/api/health`, {
-          method: 'GET',
-          signal: controller.signal,
-          mode: 'cors',
-          headers: {
-            'Cache-Control': 'no-cache',
+        // Try multiple health check endpoints for better compatibility
+        const healthEndpoints = [
+          `${API_BASE}/api/health`,
+          `${API_BASE}/health`,
+          `${API_BASE}/`,
+        ];
+        
+        let connected = false;
+        
+        for (const endpoint of healthEndpoints) {
+          try {
+            const response = await fetch(endpoint, {
+              method: 'GET',
+              signal: controller.signal,
+              mode: 'cors',
+              cache: 'no-cache',
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+              }
+            });
+            clearTimeout(timeoutId);
+            
+            if (response.ok || response.status === 200) {
+              console.log(`[Captive Portal] ✓ Backend connection successful (${endpoint})`);
+              connected = true;
+              break;
+            }
+          } catch (e) {
+            console.log(`[Captive Portal] ⚠ Endpoint failed: ${endpoint}`);
+            continue;
           }
-        });
-        clearTimeout(timeoutId);
+        }
         
-        if (response.ok) {
-          console.log('[Captive Portal] Backend connection successful');
+        if (connected) {
           setIsConnected(true);
           setIsRedirecting(true);
+        } else {
+          throw new Error('All endpoints failed');
         }
       } catch (error) {
-        console.log(`[Captive Portal] Connection check attempt: ${connectionAttempts + 1}`);
+        console.log(`[Captive Portal] Connection check attempt: ${connectionAttempts + 1}/30`);
         setConnectionAttempts(prev => prev + 1);
         
         // Retry after 1.5 seconds if not connected
         if (connectionAttempts < 30) {
-          setTimeout(checkConnection, 1500);
+          const timeoutId = setTimeout(checkConnection, 1500);
+          return () => clearTimeout(timeoutId);
         } else {
-          // After 30 attempts, try direct redirect anyway
-          console.log('[Captive Portal] Max attempts reached, attempting direct redirect');
+          // After 30 attempts, force redirect anyway
+          console.log('[Captive Portal] ⚠ Max attempts reached, redirecting anyway...');
           setIsRedirecting(true);
         }
       }
@@ -82,7 +108,7 @@ const CaptivePortal: React.FC = () => {
 
     // Start checking connection immediately
     checkConnection();
-  }, []);
+  }, [connectionAttempts]);
 
   // Auto-redirect countdown when connected
   useEffect(() => {

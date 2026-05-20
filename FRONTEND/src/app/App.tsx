@@ -75,16 +75,17 @@ export default function App() {
   >();
   const [selectedHangerNo, setSelectedHangerNo] = useState<number | null>(null);
   const [servicingSubmissionTrigger, setServicingSubmissionTrigger] =
-    useState(0);
-  const [barcodeSubmissionTrigger, setBarcodeSubmissionTrigger] = useState(0);
-  const [wheelSubmissionTrigger, setWheelSubmissionTrigger] = useState(0);
+    useState<number>(0);
+  const [barcodeSubmissionTrigger, setBarcodeSubmissionTrigger] = useState<number>(0);
+  const [wheelSubmissionTrigger, setWheelSubmissionTrigger] = useState<number>(0);
   const [checkingListSubmissionTrigger, setCheckingListSubmissionTrigger] =
-    useState(0);
+    useState<number>(0);
 
   // Verify token on app load - only allow access if token is valid
   // Skip verification for captive portal and hotspot pages (public access)
   useEffect(() => {
     const verifyToken = async () => {
+        if (!isInitialLoad) return;
       // Skip auth for public pages (captive portal, hotspot)
       const publicPages: Page[] = ['captivePortal', 'hotspotQRCode'];
       if (publicPages.includes(currentPage)) {
@@ -207,17 +208,17 @@ export default function App() {
   };
 
   const handleBarcodeComplete = () => {
-    setBarcodeSubmissionTrigger((prev) => prev + 1);
+    setBarcodeSubmissionTrigger((prev: number) => prev + 1);
     setCurrentPage("barcodeCompletion");
   };
 
   const handleWheelComplete = () => {
-    setWheelSubmissionTrigger((prev) => prev + 1);
+    setWheelSubmissionTrigger((prev: number) => prev + 1);
     setCurrentPage("wheelCompletion");
   };
 
   const handleCheckingListComplete = () => {
-    setCheckingListSubmissionTrigger((prev) => prev + 1);
+    setCheckingListSubmissionTrigger((prev: number) => prev + 1);
     setCurrentPage("checkingListCompletion");
   };
 
@@ -276,15 +277,14 @@ export default function App() {
   return (
     <div className="w-full h-full">
       <AnimatePresence mode="wait">
-        {currentPage === "login" && <Login key="login" onLogin={handleLogin} />}
+        {currentPage === "login" && <Login onLogin={handleLogin} />}
 
         {currentPage === "welcome" && (
-          <Welcome key="welcome" onStart={handleWelcomeStart} />
+          <Welcome onStart={handleWelcomeStart} />
         )}
 
         {currentPage === "admin" && (
           <AdminDashboard
-            key="admin"
             onLogout={handleLogout}
             onBack={() => setCurrentPage("welcome")}
             onOpenReport={handleOpenChecklistReport}
@@ -293,7 +293,6 @@ export default function App() {
 
         {currentPage === "userDashboard" && (
           <UserDashboard
-            key="userDashboard"
             onLogout={handleLogout}
             onCardClick={handleCardClick}
             onBack={() => setCurrentPage("welcome")}
@@ -302,7 +301,6 @@ export default function App() {
 
         {currentPage === "hangerServicing" && (
           <HangerServicing
-            key="hangerServicing"
             onLogout={handleLogout}
             onNext={handleNext}
             onBack={() => setCurrentPage("userDashboard")}
@@ -317,7 +315,6 @@ export default function App() {
 
         {currentPage === "todayActivity" && (
           <TodayActivity
-            key="todayActivity"
             onLogout={handleLogout}
             onCardClick={handleTodayActivityCardClick}
             onBack={() => setCurrentPage("userDashboard")}
@@ -326,13 +323,12 @@ export default function App() {
 
         {currentPage === "serviceChecklist" && (
           <ServiceChecklist
-            key="serviceChecklist"
             onLogout={handleLogout}
             onBack={() => setCurrentPage("hangerServicing")}
             hangerNo={selectedHangerNo}
             onSubmitSuccess={() => {
               setSelectedHangerNo(null);
-              setServicingSubmissionTrigger((prev) => prev + 1);
+              setServicingSubmissionTrigger((prev: number) => prev + 1);
               setCurrentPage("hangerServicing");
             }}
           />
@@ -340,7 +336,6 @@ export default function App() {
 
         {currentPage === "barcodeChecklist" && (
           <BarcodeChecklist
-            key="barcodeChecklist"
             onLogout={handleLogout}
             onBack={handleBackToTodayActivity}
             onNext={handleBarcodeComplete}
@@ -350,7 +345,6 @@ export default function App() {
 
         {currentPage === "wheelChecklist" && (
           <WheelChecklist
-            key="wheelChecklist"
             onLogout={handleLogout}
             onBack={handleBackToTodayActivity}
             onNext={handleWheelComplete}
@@ -360,7 +354,6 @@ export default function App() {
 
         {currentPage === "checkingListChecklist" && (
           <CheckingListChecklist
-            key="checkingListChecklist"
             onLogout={handleLogout}
             onBack={handleBackToTodayActivity}
             onNext={handleCheckingListComplete}
@@ -370,7 +363,6 @@ export default function App() {
 
         {currentPage === "barcodeCompletion" && (
           <BarcodeCompletion
-            key="barcodeCompletion"
             onLogout={handleLogout}
             onNext={handleCompletionNext}
             onBack={() => setCurrentPage("userDashboard")}
@@ -382,7 +374,6 @@ export default function App() {
 
         {currentPage === "wheelCompletion" && (
           <WheelCompletion
-            key="wheelCompletion"
             onLogout={handleLogout}
             onNext={handleCompletionNext}
             onBack={() => setCurrentPage("userDashboard")}
@@ -394,7 +385,6 @@ export default function App() {
 
         {currentPage === "checkingListCompletion" && (
           <CheckingListCompletion
-            key="checkingListCompletion"
             onLogout={handleLogout}
             onNext={handleCompletionNext}
             onBack={() => setCurrentPage("userDashboard")}
@@ -405,7 +395,7 @@ export default function App() {
         )}
 
         {currentPage === "checklistReport" && (
-          <div key="checklistReport">
+          <div>
             <ChecklistReport />
             <button
               onClick={handleBackFromReport}
@@ -424,14 +414,13 @@ export default function App() {
 
         {currentPage === "checklistItemsManager" && (
           <ChecklistItemsManager
-            key="checklistItemsManager"
             onBack={handleBackFromItemsManager}
             onLogout={handleLogout}
           />
         )}
 
         {currentPage === "hotspotQRCode" && (
-          <div key="hotspotQRCode">
+          <div>
             <HotspotQRCode />
             <button
               onClick={() => setCurrentPage("admin")}
@@ -443,7 +432,7 @@ export default function App() {
         )}
 
         {currentPage === "captivePortal" && (
-          <CaptivePortal key="captivePortal" />
+          <CaptivePortal />
         )}
       </AnimatePresence>
     </div>

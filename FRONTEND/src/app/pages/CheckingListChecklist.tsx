@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "motion/react";
 import { Search, Check, X } from "lucide-react";
 import { Navbar } from "../components/Navbar";
@@ -39,12 +39,52 @@ export function CheckingListChecklist({
 
   const totalHangers = 112;
 
-  // Auto-load initial hanger if provided
+  // ✅ FIX: Define handleHangerSelect with useCallback BEFORE useEffect
+  const handleHangerSelect = useCallback(async (hangerNo: number) => {
+    console.log("Loading hanger:", hangerNo); // Debug log
+
+    // ✅ Reset ALL state before fetching new hanger data
+    setChecklistData([]);
+    setDoneBy("");
+    setDoneOn("");
+    setSearchTerm("");
+    setSelectedHanger(hangerNo);
+    setIsLoading(true);
+
+    try {
+      const response = await checkingListChecklistAPI.getForHanger(hangerNo);
+      console.log("API response for hanger", hangerNo, ":", response); // Debug log
+
+      if (response.success) {
+        const mapped = response.data.checklist.map((item: any) => ({
+          sr: item.sr_no,
+          activity: item.activity,
+          status: item.status,
+          remarks: item.remarks || "",
+          image: item.image || "",
+          standard_value: item.standard_value || "",
+        }));
+        console.log("Mapped checklist:", mapped); // Debug log
+        setChecklistData(mapped);
+      } else {
+        console.warn("API returned success=false for hanger", hangerNo);
+        setChecklistData(getDefaultChecklist());
+      }
+    } catch (err) {
+      console.error("Failed to fetch checking list for hanger", hangerNo, ":", err);
+      setChecklistData(getDefaultChecklist());
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // ✅ FIX: useEffect now correctly references handleHangerSelect
   useEffect(() => {
     if (initialHanger) {
+      console.log("initialHanger received:", initialHanger); // Debug log
       handleHangerSelect(initialHanger);
     }
-  }, [initialHanger]);
+  }, [initialHanger, handleHangerSelect]);
 
   // Handle viewport resize
   useEffect(() => {
@@ -66,85 +106,6 @@ export function CheckingListChecklist({
       )
     : [];
 
-  const handleHangerSelect = async (hangerNo: number) => {
-    setIsLoading(true);
-    setSelectedHanger(hangerNo);
-
-    try {
-      const response = await checkingListChecklistAPI.getForHanger(hangerNo);
-      if (response.success) {
-        setChecklistData(
-          response.data.checklist.map((item: any) => ({
-            sr: item.sr_no,
-            activity: item.activity,
-            status: item.status,
-            remarks: item.remarks || "",
-            image: item.image || "",
-            standard_value: item.standard_value || "",
-          }))
-        );
-      }
-    } catch (err) {
-      console.error("Failed to fetch checking list:", err);
-      // Fallback to default checklist for Checking List
-      setChecklistData([
-        {
-          sr: 1,
-          activity: "Hanger Serial Number Verified",
-          status: "pending",
-          remarks: "",
-          image: "",
-          standard_value: "",
-        },
-        {
-          sr: 2,
-          activity: "Weight Capacity Label Check",
-          status: "pending",
-          remarks: "",
-          image: "",
-          standard_value: "",
-        },
-        {
-          sr: 3,
-          activity: "Safety Certificate Present",
-          status: "pending",
-          remarks: "",
-          image: "",
-          standard_value: "",
-        },
-        {
-          sr: 4,
-          activity: "Installation Date Recorded",
-          status: "pending",
-          remarks: "",
-          image: "",
-          standard_value: "",
-        },
-        {
-          sr: 5,
-          activity: "Maintenance History Available",
-          status: "pending",
-          remarks: "",
-          image: "",
-          standard_value: "",
-        },
-        {
-          sr: 6,
-          activity: "General Condition Report",
-          status: "pending",
-          remarks: "",
-          image: "",
-          standard_value: "",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-
-    setDoneBy("");
-    setDoneOn("");
-  };
-
   const handleStatusChange = (sr: number, status: "done" | "failed") => {
     setChecklistData((prev) =>
       prev.map((item) => (item.sr === sr ? { ...item, status } : item))
@@ -158,8 +119,17 @@ export function CheckingListChecklist({
   };
 
   const handleSubmit = async () => {
-    if (!doneBy || !doneOn) {
-      alert("Please fill in 'Done By' and 'Done On' fields");
+    if (!doneBy || !doneBy.trim()) {
+      alert("Please enter 'Done By' name");
+      return;
+    }
+    if (!doneOn) {
+      alert("Please select 'Done On' date");
+      return;
+    }
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(doneOn)) {
+      alert("Invalid date format. Please select a valid date.");
       return;
     }
 
@@ -180,14 +150,8 @@ export function CheckingListChecklist({
       );
 
       if (response.success) {
-        alert(
-          `Checking List submitted successfully for Hanger ${selectedHanger}`
-        );
-        // Navigate to completion page
-        if (onNext) {
-          onNext();
-        }
-        // Reset form
+        alert(`Checking List submitted successfully for Hanger ${selectedHanger}`);
+        if (onNext) onNext();
         setSelectedHanger(null);
         setSearchTerm("");
         setChecklistData([]);
@@ -230,6 +194,14 @@ export function CheckingListChecklist({
             <label className="block text-lg font-semibold text-gray-800 mb-3">
               Hanger No. (Total: {totalHangers})
             </label>
+
+            {/* ✅ Show which hanger is currently loaded */}
+            {selectedHanger && (
+              <p className="text-sm text-[#0b5d3b] font-medium mb-2">
+                Currently viewing: Hanger {selectedHanger}
+              </p>
+            )}
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -258,8 +230,15 @@ export function CheckingListChecklist({
           </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center text-gray-500 mt-8">
+            <p className="text-lg">Loading checklist for Hanger {selectedHanger}...</p>
+          </div>
+        )}
+
         {/* Checklist Table */}
-        {selectedHanger && (
+        {selectedHanger && !isLoading && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -271,43 +250,24 @@ export function CheckingListChecklist({
                 Hanger {selectedHanger} - Checking List
               </h2>
 
-              {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-[#0b5d3b] text-white">
-                      <th className="border border-gray-300 px-4 py-3 text-left">
-                        SR
-                      </th>
-                      <th className="border border-gray-300 px-4 py-3 text-left">
-                        Activity
-                      </th>
-                      <th className="border border-gray-300 px-4 py-3 text-left">
-                        Standard Value
-                      </th>
-                      <th className="border border-gray-300 px-4 py-3 text-center">
-                        Image
-                      </th>
-                      <th className="border border-gray-300 px-4 py-3 text-left">
-                        Status
-                      </th>
-                      <th className="border border-gray-300 px-4 py-3 text-left">
-                        Remarks
-                      </th>
-                      <th className="border border-gray-300 px-4 py-3 text-center">
-                        Done
-                      </th>
+                      <th className="border border-gray-300 px-4 py-3 text-left">SR</th>
+                      <th className="border border-gray-300 px-4 py-3 text-left">Activity</th>
+                      <th className="border border-gray-300 px-4 py-3 text-left">Standard Value</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center">Image</th>
+                      <th className="border border-gray-300 px-4 py-3 text-left">Status</th>
+                      <th className="border border-gray-300 px-4 py-3 text-left">Remarks</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center">Done</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {checklistData.map((item) => (
-                      <tr key={item.sr} className="hover:bg-gray-50">
-                        <td className="border border-gray-300 px-4 py-3 font-semibold">
-                          {item.sr}
-                        </td>
-                        <td className="border border-gray-300 px-4 py-3">
-                          {item.activity}
-                        </td>
+                    {checklistData.map((item, index) => (
+                      <tr key={`checking-list-${item.sr}-${index}`} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-3 font-semibold">{item.sr}</td>
+                        <td className="border border-gray-300 px-4 py-3">{item.activity}</td>
                         <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">
                           {item.standard_value}
                         </td>
@@ -324,9 +284,7 @@ export function CheckingListChecklist({
                               title="Click to view"
                             />
                           ) : (
-                            <span className="text-gray-400 text-sm">
-                              No image
-                            </span>
+                            <span className="text-gray-400 text-sm">No image</span>
                           )}
                         </td>
                         <td className="border border-gray-300 px-4 py-3">
@@ -339,20 +297,14 @@ export function CheckingListChecklist({
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {item.status === "done"
-                              ? "Done"
-                              : item.status === "failed"
-                              ? "Failed"
-                              : "Pending"}
+                            {item.status === "done" ? "Done" : item.status === "failed" ? "Failed" : "Pending"}
                           </span>
                         </td>
                         <td className="border border-gray-300 px-4 py-3">
                           <input
                             type="text"
                             value={item.remarks}
-                            onChange={(e) =>
-                              handleRemarksChange(item.sr, e.target.value)
-                            }
+                            onChange={(e) => handleRemarksChange(item.sr, e.target.value)}
                             placeholder="Add remarks..."
                             className="w-full px-2 py-1 border border-gray-300 rounded focus:border-[#0b5d3b] focus:outline-none"
                           />
@@ -360,9 +312,12 @@ export function CheckingListChecklist({
                         <td className="border border-gray-300 px-4 py-3">
                           <div className="flex justify-center gap-3">
                             <button
-                              onClick={() =>
-                                handleStatusChange(item.sr, "done")
-                              }
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleStatusChange(item.sr, "done");
+                              }}
                               className={`p-2 rounded-lg transition-all ${
                                 item.status === "done"
                                   ? "bg-green-500 text-white"
@@ -373,9 +328,12 @@ export function CheckingListChecklist({
                               <Check className="w-5 h-5" />
                             </button>
                             <button
-                              onClick={() =>
-                                handleStatusChange(item.sr, "failed")
-                              }
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleStatusChange(item.sr, "failed");
+                              }}
                               className={`p-2 rounded-lg transition-all ${
                                 item.status === "failed"
                                   ? "bg-red-500 text-white"
@@ -395,8 +353,8 @@ export function CheckingListChecklist({
 
               {/* Bottom Section */}
               <div className="mt-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                {/* Submit Button - Left */}
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
                   className="px-8 py-3 bg-[#0b5d3b] text-white text-lg font-semibold rounded-xl hover:bg-[#0a4d30] transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -404,12 +362,9 @@ export function CheckingListChecklist({
                   {isSubmitting ? "Submitting..." : "Submit"}
                 </button>
 
-                {/* Done By and Done On - Right */}
                 <div className="flex flex-col md:flex-row gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Done By
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Done By</label>
                     <input
                       type="text"
                       value={doneBy}
@@ -419,9 +374,7 @@ export function CheckingListChecklist({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Done On
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Done On</label>
                     <input
                       type="date"
                       value={doneOn}
@@ -443,9 +396,7 @@ export function CheckingListChecklist({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onAnimationComplete={() => {
-              modalOpenRef.current = true;
-            }}
+            onAnimationComplete={() => { modalOpenRef.current = true; }}
             onClick={(e) => {
               if (modalOpenRef.current && e.target === e.currentTarget) {
                 setHoveredImage(null);
@@ -467,10 +418,7 @@ export function CheckingListChecklist({
                   className="max-w-4xl max-h-[600px] object-contain rounded-lg"
                 />
                 <button
-                  onClick={() => {
-                    setHoveredImage(null);
-                    modalOpenRef.current = false;
-                  }}
+                  onClick={() => { setHoveredImage(null); modalOpenRef.current = false; }}
                   className="absolute top-4 right-4 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 rounded-full p-2 transition-all"
                   title="Close"
                 >
@@ -482,14 +430,24 @@ export function CheckingListChecklist({
         )}
 
         {/* No Hanger Selected Message */}
-        {!selectedHanger && (
+        {!selectedHanger && !isLoading && (
           <div className="text-center text-gray-500 mt-12">
-            <p className="text-lg">
-              Please search and select a hanger to view the checklist
-            </p>
+            <p className="text-lg">Please search and select a hanger to view the checklist</p>
           </div>
         )}
       </motion.div>
     </div>
   );
+}
+
+// ✅ Default checklist fallback (when API fails)
+function getDefaultChecklist(): ChecklistItem[] {
+  return [
+    { sr: 1, activity: "Hanger Serial Number Verified", status: "pending", remarks: "", image: "", standard_value: "" },
+    { sr: 2, activity: "Weight Capacity Label Check", status: "pending", remarks: "", image: "", standard_value: "" },
+    { sr: 3, activity: "Safety Certificate Present", status: "pending", remarks: "", image: "", standard_value: "" },
+    { sr: 4, activity: "Installation Date Recorded", status: "pending", remarks: "", image: "", standard_value: "" },
+    { sr: 5, activity: "Maintenance History Available", status: "pending", remarks: "", image: "", standard_value: "" },
+    { sr: 6, activity: "General Condition Report", status: "pending", remarks: "", image: "", standard_value: "" },
+  ];
 }

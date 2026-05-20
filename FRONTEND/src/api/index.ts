@@ -84,6 +84,24 @@ const setCachedResponse = (
 ) => {
   apiCache.set(key, { data, timestamp: Date.now(), ttl });
 };
+// Prevent duplicate parallel requests
+const activeRequests = new Map<string, Promise<any>>();
+
+// Retry only for network failure (NOT for 429)
+const fetchWithRetry = async (
+  url: string,
+  options: RequestInit,
+  retries = 2
+): Promise<Response> => {
+  try {
+    return await fetch(url, options);
+  } catch (err) {
+    if (retries <= 0) throw err;
+    await new Promise(r => setTimeout(r, 400 * (3 - retries)));
+    return fetchWithRetry(url, options, retries - 1);
+  }
+};
+
 
 // Base fetch function with auth and caching
 const fetchWithAuth = async (
@@ -92,16 +110,22 @@ const fetchWithAuth = async (
   cacheKey?: string,
   cacheTTL?: number
 ) => {
-  // Check cache for GET requests
+
+  // Cache check (GET only)
   if (!options.method || options.method === "GET") {
-    const cacheKeyToUse = cacheKey || endpoint;
-    const cached = getCachedResponse(cacheKeyToUse);
-    if (cached) {
-      return cached;
-    }
+    const key = cacheKey || endpoint;
+    const cached = getCachedResponse(key);
+    if (cached) return cached;
+  }
+
+  // Prevent duplicate parallel calls
+  const requestKey = `${endpoint}-${options.method || "GET"}`;
+  if (activeRequests.has(requestKey)) {
+    return activeRequests.get(requestKey);
   }
 
   const token = getToken();
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
@@ -113,62 +137,66 @@ const fetchWithAuth = async (
 
   const method = options.method || "GET";
   const fullUrl = `${API_BASE_URL}${endpoint}`;
-  
-  console.log(`[API] Sending ${method} to ${fullUrl}`);
-  log(`Fetching: ${fullUrl}`, { method });
 
-  try {
-    const response = await fetch(fullUrl, {
-      ...options,
-      method: method,
-      headers,
-      credentials: "omit", // Don't include cookies for cross-origin in development
-    });
-
-    console.log(`[API] Response ${response.status} from ${endpoint}`);
-    log(`Response status: ${response.status} for ${endpoint}`);
-
-    const text = await response.text();
-    let data: any;
-
+  const requestPromise = (async () => {
     try {
-      data = JSON.parse(text);
-    } catch (e) {
-      // Response is not JSON, return as plain text
-      data = { success: false, message: text || "Invalid response format" };
-    }
+      console.log(`[API] Sending ${method} to ${fullUrl}`);
 
-    // Don't log sensitive data
-    if (!endpoint.includes("login") && !endpoint.includes("password")) {
-      log(`Response for ${endpoint}:`, { success: data.success });
-    }
+      const response = await fetchWithRetry(fullUrl, {
+        ...options,
+        method,
+        headers,
+        credentials: "omit",
+      });
 
-    if (!response.ok) {
-      // Handle token expiration or revocation
-      // But NOT for login endpoint (401 on login just means wrong credentials)
-      if (response.status === 401 && !endpoint.includes("login")) {
-        removeToken();
-        window.location.href = "/";
+      console.log(`[API] Response ${response.status} from ${endpoint}`);
+
+      const text = await response.text();
+      let data: any;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { success: false, message: text || "Invalid response format" };
       }
 
-      // Handle rate limiting (429 Too Many Requests)
-      if (response.status === 429) {
-        throw new Error(
-          "Too many requests. Please wait a moment and try again."
-        );
+      if (!response.ok) {
+
+        if (response.status === 401 && !endpoint.includes("login")) {
+          removeToken();
+          window.location.href = "/";
+        }
+
+        if (response.status === 429) {
+          throw new Error("Too many requests. Please wait a few seconds.");
+        }
+
+        throw new Error(data.message || "Request failed");
       }
 
-      throw new Error(data.message || "Request failed");
-    }
+      // Save cache if GET
+      if (!options.method || options.method === "GET") {
+        const key = cacheKey || endpoint;
+        setCachedResponse(key, data, cacheTTL);
+      }
 
-    return data;
-  } catch (error: any) {
-    const errorMsg = error.message || "Failed to fetch";
-    log(`Fetch error for ${endpoint}:`, errorMsg);
-    // Re-throw with more context
-    throw new Error(`${endpoint}: ${errorMsg}`);
-  }
+      return data;
+
+    } catch (err: any) {
+      throw new Error(`${endpoint}: ${err.message}`);
+    } finally {
+      activeRequests.delete(requestKey);
+    }
+  })();
+
+  activeRequests.set(requestKey, requestPromise);
+
+  return requestPromise;
 };
+
+
+ 
+
 
 // Clear cache for specific endpoint
 export const clearCache = (endpoint?: string) => {
@@ -210,13 +238,24 @@ export const authAPI = {
   },
 
   verify: async () => {
-    return fetchWithAuth("/auth/verify");
-  },
+  return fetchWithAuth(
+    "/auth/verify",
+    {},
+    "auth/verify",
+    10000   // cache 10 seconds
+  );
+},
 
   // Get current user's role from backend
   getCurrentRole: async () => {
     try {
-      const response = await fetchWithAuth("/auth/verify");
+      const response = await fetchWithAuth(
+  "/auth/verify",
+  {},
+  "auth/verify",
+  10000
+);
+
       if (response.success) {
         const backendRole = response.data.role;
         const storedRole = localStorage.getItem("userRole");

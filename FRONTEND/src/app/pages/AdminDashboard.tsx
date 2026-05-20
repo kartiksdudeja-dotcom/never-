@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { socket } from "../../socket";
+
+
 import { motion } from "motion/react";
 import { Navbar } from "../components/Navbar";
 import { Dialog } from "../components/ui/dialog";
@@ -62,23 +65,30 @@ export function AdminDashboard({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+
+
+   
   // Fetch users and dashboard stats on mount
-  useEffect(() => {
-    fetchData();
+useEffect(() => {
+  fetchData(); // one time load
 
-    // Verify role every 10 seconds (to detect if user was promoted/demoted)
-    const roleCheckInterval = setInterval(async () => {
-      try {
-        const currentRole = await authAPI.getCurrentRole();
-        // If role changed to non-admin, the App component will need to handle logout
-        // This is checked when navigating pages
-      } catch (err) {
-        console.error("Role check failed:", err);
-      }
-    }, 10000);
+ socket.on("activity-update", (payload: any) => {
 
-    return () => clearInterval(roleCheckInterval);
-  }, []);
+    console.log("Realtime update received", payload);
+
+    if (payload?.type === "checklist") {
+      checklistAPI.getReport().then(res => {
+        if (res.success) setChecklistReports(res.data);
+      });
+    }
+  });
+
+  return () => {
+    socket.off("data_updated");
+  };
+}, []);
+
+
 
   const fetchData = async () => {
     setIsLoading(true);

@@ -1,4 +1,7 @@
 from flask import Blueprint, request, jsonify
+from socketio_instance import socketio
+
+
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from database import get_db_connection
 
@@ -221,10 +224,18 @@ def save_hanger_checklist(hanger_no):
             """, (done_on, done_by, hanger_id))
         elif any_failed:
             cursor.execute("""
-                UPDATE hangers SET status = 'needed' WHERE id = %s
-            """, (hanger_id,))
+                UPDATE hangers SET status = 'needed', last_serviced_date = %s, last_serviced_by = %s
+                WHERE id = %s
+            """, (done_on, done_by, hanger_id))
         
         connection.commit()
+        # 🔥 REALTIME PUSH
+        socketio.emit("data_updated", {
+         "type": "barcode_checklist",
+          "hangerNo": hanger_no,
+         "time": datetime.now().isoformat()
+        })
+
         
         # Log activity
         current_user = get_jwt_identity()
@@ -237,6 +248,13 @@ def save_hanger_checklist(hanger_no):
             f"Service checklist submitted for Hanger {hanger_no}"
         ))
         connection.commit()
+        # 🔥 REALTIME PUSH
+        socketio.emit("data_updated", {
+           "type": "service_checklist",
+           "hangerNo": hanger_no,
+           "time": datetime.now().isoformat()
+        })
+
         
         cursor.close()
         connection.close()
@@ -569,7 +587,10 @@ def save_barcode_hanger_checklist(hanger_no):
         any_failed = any(item.get('status') == 'failed' for item in checklist_items)
         
         if all_done:
-            cursor.execute("UPDATE hangers SET status = 'done' WHERE id = %s", (hanger_id,))
+            cursor.execute("""
+                UPDATE hangers SET status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                WHERE id = %s
+            """, (done_on, done_by, hanger_id))
         elif any_failed:
             cursor.execute("UPDATE hangers SET status = 'needed' WHERE id = %s", (hanger_id,))
         
@@ -717,11 +738,24 @@ def save_wheel_hanger_checklist(hanger_no):
         any_failed = any(item.get('status') == 'failed' for item in checklist_items)
         
         if all_done:
-            cursor.execute("UPDATE hangers SET status = 'done' WHERE id = %s", (hanger_id,))
+            cursor.execute("""
+                UPDATE hangers SET status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                WHERE id = %s
+            """, (done_on, done_by, hanger_id))
         elif any_failed:
-            cursor.execute("UPDATE hangers SET status = 'needed' WHERE id = %s", (hanger_id,))
+            cursor.execute("""
+                UPDATE hangers SET status = 'needed', last_serviced_date = %s, last_serviced_by = %s
+                WHERE id = %s
+            """, (done_on, done_by, hanger_id))
         
         connection.commit()
+        # 🔥 REALTIME PUSH
+        socketio.emit("data_updated", {
+            "type": "wheel_checklist",
+            "hangerNo": hanger_no,
+            "time": datetime.now().isoformat()
+        })
+
         
         # Log activity
         current_user = get_jwt_identity()
@@ -865,11 +899,21 @@ def save_checking_list_hanger_checklist(hanger_no):
         any_failed = any(item.get('status') == 'failed' for item in checklist_items)
         
         if all_done:
-            cursor.execute("UPDATE hangers SET status = 'done' WHERE id = %s", (hanger_id,))
+            cursor.execute("""
+                UPDATE hangers SET status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                WHERE id = %s
+            """, (done_on, done_by, hanger_id))
         elif any_failed:
             cursor.execute("UPDATE hangers SET status = 'needed' WHERE id = %s", (hanger_id,))
         
         connection.commit()
+        # 🔥 REALTIME PUSH
+        socketio.emit("data_updated", {
+            "type": "checking_list",
+         "hangerNo": hanger_no,
+            "time": datetime.now().isoformat()
+        })
+
         
         # Log activity
         current_user = get_jwt_identity()

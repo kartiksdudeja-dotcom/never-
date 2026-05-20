@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify, redirect
+from socketio_instance import socketio
+
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
@@ -21,8 +23,10 @@ from routes.activity import activity_bp
 from routes.dashboard import dashboard_bp
 from routes.hotspot import hotspot_bp
 
-# Initialize limiter globally
+
+
 limiter = Limiter(
+
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://",
@@ -85,6 +89,8 @@ def stop_redirect_server():
 def create_app(config_name='development'):
     """Application factory pattern"""
     app = Flask(__name__)
+    socketio.init_app(app)
+
     app.config.from_object(config[config_name])
     
     # Initialize connection pool for faster database access
@@ -328,7 +334,10 @@ if __name__ == '__main__':
     print("="*50 + "\n")
     
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+       socketio.run(app, host='0.0.0.0', port=5000)
+
+
+
     except KeyboardInterrupt:
         print("\n\nShutting down...")
         stop_redirect_server()

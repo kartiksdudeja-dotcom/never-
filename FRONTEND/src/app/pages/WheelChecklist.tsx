@@ -158,8 +158,17 @@ export function WheelChecklist({
   };
 
   const handleSubmit = async () => {
-    if (!doneBy || !doneOn) {
-      alert("Please fill in 'Done By' and 'Done On' fields");
+    if (!doneBy || !doneBy.trim()) {
+      alert("Please enter 'Done By' name");
+      return;
+    }
+    if (!doneOn) {
+      alert("Please select 'Done On' date");
+      return;
+    }
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(doneOn)) {
+      alert("Invalid date format. Please select a valid date.");
       return;
     }
 
@@ -300,8 +309,8 @@ export function WheelChecklist({
                     </tr>
                   </thead>
                   <tbody>
-                    {checklistData.map((item) => (
-                      <tr key={item.sr} className="hover:bg-gray-50">
+                    {checklistData.map((item, index) => (
+                      <tr key={`wheel-checklist-${item.sr}-${index}`} className="hover:bg-gray-50">
                         <td className="border border-gray-300 px-4 py-3 font-semibold">
                           {item.sr}
                         </td>
@@ -360,9 +369,12 @@ export function WheelChecklist({
                         <td className="border border-gray-300 px-4 py-3">
                           <div className="flex justify-center gap-3">
                             <button
-                              onClick={() =>
-                                handleStatusChange(item.sr, "done")
-                              }
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleStatusChange(item.sr, "done");
+                              }}
                               className={`p-2 rounded-lg transition-all ${
                                 item.status === "done"
                                   ? "bg-green-500 text-white"
@@ -373,9 +385,12 @@ export function WheelChecklist({
                               <Check className="w-5 h-5" />
                             </button>
                             <button
-                              onClick={() =>
-                                handleStatusChange(item.sr, "failed")
-                              }
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleStatusChange(item.sr, "failed");
+                              }}
                               className={`p-2 rounded-lg transition-all ${
                                 item.status === "failed"
                                   ? "bg-red-500 text-white"
@@ -397,6 +412,7 @@ export function WheelChecklist({
               <div className="mt-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 {/* Submit Button - Left */}
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
                   className="px-8 py-3 bg-[#0b5d3b] text-white text-lg font-semibold rounded-xl hover:bg-[#0a4d30] transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
