@@ -230,11 +230,11 @@ def save_hanger_checklist(hanger_no):
         
         connection.commit()
         # 🔥 REALTIME PUSH
-        socketio.emit("data_updated", {
-         "type": "barcode_checklist",
-          "hangerNo": hanger_no,
-         "time": datetime.now().isoformat()
-        })
+        # socketio.emit("data_updated", {
+        #  "type": "barcode_checklist",
+        #   "hangerNo": hanger_no,
+        #  "time": datetime.now().isoformat()
+        # })
 
         
         # Log activity
@@ -249,11 +249,11 @@ def save_hanger_checklist(hanger_no):
         ))
         connection.commit()
         # 🔥 REALTIME PUSH
-        socketio.emit("data_updated", {
-           "type": "service_checklist",
-           "hangerNo": hanger_no,
-           "time": datetime.now().isoformat()
-        })
+        # socketio.emit("data_updated", {
+        #    "type": "service_checklist",
+        #    "hangerNo": hanger_no,
+        #    "time": datetime.now().isoformat()
+        # })
 
         
         cursor.close()
@@ -750,11 +750,11 @@ def save_wheel_hanger_checklist(hanger_no):
         
         connection.commit()
         # 🔥 REALTIME PUSH
-        socketio.emit("data_updated", {
-            "type": "wheel_checklist",
-            "hangerNo": hanger_no,
-            "time": datetime.now().isoformat()
-        })
+        # socketio.emit("data_updated", {
+        #     "type": "wheel_checklist",
+        #     "hangerNo": hanger_no,
+        #     "time": datetime.now().isoformat()
+        # })
 
         
         # Log activity
@@ -908,11 +908,11 @@ def save_checking_list_hanger_checklist(hanger_no):
         
         connection.commit()
         # 🔥 REALTIME PUSH
-        socketio.emit("data_updated", {
-            "type": "checking_list",
-         "hangerNo": hanger_no,
-            "time": datetime.now().isoformat()
-        })
+        # socketio.emit("data_updated", {
+        #     "type": "checking_list",
+        #  "hangerNo": hanger_no,
+        #     "time": datetime.now().isoformat()
+        # })
 
         
         # Log activity
