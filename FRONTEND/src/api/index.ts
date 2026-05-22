@@ -294,7 +294,7 @@ export const usersAPI = {
 
   update: async (
     id: number,
-    data: { password?: string; status?: string; role?: string }
+    data: { userId?: string; password?: string; status?: string; role?: string }
   ) => {
     return fetchWithAuth(`/users/${id}`, {
       method: "PUT",
@@ -315,8 +315,9 @@ export const hangersAPI = {
     return fetchWithAuth("/hangers");
   },
 
-  getStats: async () => {
-    return fetchWithAuth("/hangers/stats");
+  getStats: async (checklistType?: string) => {
+    const params = checklistType ? `?type=${checklistType}` : "";
+    return fetchWithAuth(`/hangers/stats${params}`);
   },
 
   getOne: async (hangerNo: number) => {

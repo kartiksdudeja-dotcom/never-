@@ -58,7 +58,7 @@ export function BarcodeCompletion({
     setIsLoading(true);
     try {
       const [statsResponse, hangersResponse] = await Promise.all([
-        hangersAPI.getStats(),
+        hangersAPI.getStats("barcode"),
         hangersAPI.getAll(),
       ]);
 
@@ -70,7 +70,7 @@ export function BarcodeCompletion({
         const hangerList = hangersResponse.data.map((hanger: any) => ({
           id: hanger.id,
           hanger_no: hanger.hanger_no,
-          status: hanger.status,
+          status: hanger.barcode_status || hanger.status,
         }));
         setHangerData(hangerList);
       }

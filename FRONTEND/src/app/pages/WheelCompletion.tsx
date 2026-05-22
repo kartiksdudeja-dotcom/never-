@@ -58,7 +58,7 @@ export function WheelCompletion({
     setIsLoading(true);
     try {
       const [statsResponse, hangersResponse] = await Promise.all([
-        hangersAPI.getStats(),
+        hangersAPI.getStats("wheel"),
         hangersAPI.getAll(),
       ]);
 
@@ -70,7 +70,7 @@ export function WheelCompletion({
         const hangerList = hangersResponse.data.map((hanger: any) => ({
           id: hanger.id,
           hanger_no: hanger.hanger_no,
-          status: hanger.status,
+          status: hanger.wheel_status || hanger.status,
         }));
         setHangerData(hangerList);
       }

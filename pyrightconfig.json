@@ -1,4 +1,14 @@
 {
   "venvPath": "BACKEND",
-  "venv": "venv"
+  "venv": "venv",
+  "pythonVersion": "3.11",
+  "include": ["BACKEND"],
+  "executionEnvironments": [
+    {
+      "root": "BACKEND",
+      "extraPaths": ["BACKEND"]
+    }
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none"
 }

@@ -171,6 +171,7 @@ def update_user(user_id):
     """Update a user (admin only)"""
     try:
         data = request.get_json()
+        new_user_id = data.get('userId')
         new_password = data.get('password')
         status = data.get('status')
         role = data.get('role')
@@ -187,6 +188,19 @@ def update_user(user_id):
         # Build update query dynamically
         updates = []
         params = []
+        
+        if new_user_id:
+            # Check if the new user_id is already taken by another user
+            cursor.execute("SELECT id FROM users WHERE user_id = %s AND id != %s", (new_user_id, user_id))
+            if cursor.fetchone():
+                cursor.close()
+                connection.close()
+                return jsonify({
+                    'success': False,
+                    'message': 'User ID already exists'
+                }), 400
+            updates.append("user_id = %s")
+            params.append(new_user_id)
         
         if new_password:
             hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())

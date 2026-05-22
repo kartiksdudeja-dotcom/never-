@@ -97,6 +97,9 @@ export function AdminDashboard({
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserId, setEditUserId] = useState("");
+  const [editPassword, setEditPassword] = useState("");
 
 
 
@@ -277,6 +280,34 @@ export function AdminDashboard({
       }
     } catch (err: any) {
       alert(err.message || "Failed to delete user");
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser) return;
+    const updateData: { userId?: string; password?: string } = {};
+    if (editUserId && editUserId !== editingUser.user_id) {
+      updateData.userId = editUserId;
+    }
+    if (editPassword) {
+      updateData.password = editPassword;
+    }
+    if (Object.keys(updateData).length === 0) {
+      alert("No changes to save");
+      return;
+    }
+    try {
+      const response = await usersAPI.update(editingUser.id, updateData);
+      if (response.success) {
+        clearCache();
+        await fetchData();
+        setEditingUser(null);
+        setEditUserId("");
+        setEditPassword("");
+        alert("User updated successfully");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update user");
     }
   };
 
@@ -641,6 +672,16 @@ export function AdminDashboard({
                                 }`}
                               >
                                 {user.status === "active" ? "Deactivate" : "Activate"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingUser(user);
+                                  setEditUserId(user.user_id);
+                                  setEditPassword("");
+                                }}
+                                className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                              >
+                                Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteUser(user.id)}
@@ -1447,6 +1488,89 @@ export function AdminDashboard({
                 className="flex-1 px-4 py-3 bg-[#0b5d3b] text-white rounded-xl text-base font-semibold hover:bg-[#0a4d30] transition-colors active:scale-95"
               >
                 Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit User Dialog */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Edit User</h3>
+              <button
+                onClick={() => {
+                  setEditingUser(null);
+                  setEditUserId("");
+                  setEditPassword("");
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  User ID (Login Name)
+                </label>
+                <input
+                  type="text"
+                  value={editUserId}
+                  onChange={(e) => setEditUserId(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0b5d3b] focus:border-transparent outline-none text-sm"
+                  placeholder="Enter new user ID"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0b5d3b] focus:border-transparent outline-none text-sm"
+                  placeholder="Leave blank to keep current password"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Min 8 chars, 1 uppercase, 1 lowercase, 1 number
+                </p>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-500">
+                  Current: <span className="font-semibold text-gray-700">{editingUser.user_id}</span>
+                  {" "} • Role: <span className="font-semibold text-gray-700">{editingUser.role}</span>
+                  {" "} • Status: <span className="font-semibold text-gray-700">{editingUser.status}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setEditingUser(null);
+                  setEditUserId("");
+                  setEditPassword("");
+                }}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditUser}
+                className="flex-1 px-4 py-3 bg-[#0b5d3b] text-white rounded-xl text-sm font-semibold hover:bg-[#0a4d30] transition-colors active:scale-95"
+              >
+                Save Changes
               </button>
             </div>
           </motion.div>

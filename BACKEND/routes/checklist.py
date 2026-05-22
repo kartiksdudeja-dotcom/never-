@@ -219,12 +219,12 @@ def save_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET status = 'done', service_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
             cursor.execute("""
-                UPDATE hangers SET status = 'needed', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET status = 'needed', service_status = 'needed', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         
@@ -347,7 +347,7 @@ def get_checklist_report():
         cursor.execute("""
             SELECT 
                 h.hanger_no,
-                DATE(sc.created_at) as submission_date,
+                sc.done_on as submission_date,
                 sc.done_by as submitted_by,
                 COUNT(sc.id) as total_items,
                 SUM(CASE WHEN sc.status = 'done' THEN 1 ELSE 0 END) as completed_items,
@@ -356,8 +356,8 @@ def get_checklist_report():
                 GROUP_CONCAT(CASE WHEN sc.remarks != '' THEN CONCAT(sc.sr_no, ': ', sc.remarks) END SEPARATOR ' | ') as remarks
             FROM service_checklist sc
             LEFT JOIN hangers h ON sc.hanger_id = h.id
-            GROUP BY h.hanger_no, DATE(sc.created_at), sc.done_by
-            ORDER BY DATE(sc.created_at) DESC, h.hanger_no ASC
+            GROUP BY h.hanger_no, sc.done_on, sc.done_by
+            ORDER BY sc.done_on DESC, h.hanger_no ASC
             LIMIT 500
         """)
         reports = cursor.fetchall()
@@ -428,7 +428,7 @@ def get_checklist_report_details():
                 sc.done_on
             FROM service_checklist sc
             WHERE sc.hanger_id = %s 
-                AND DATE(sc.created_at) = %s 
+                AND sc.done_on = %s 
                 AND sc.done_by = %s
             ORDER BY sc.sr_no ASC
         """, (hanger['id'], submission_date, submitted_by))
@@ -588,11 +588,11 @@ def save_barcode_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET status = 'done', barcode_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
-            cursor.execute("UPDATE hangers SET status = 'needed' WHERE id = %s", (hanger_id,))
+            cursor.execute("UPDATE hangers SET status = 'needed', barcode_status = 'needed' WHERE id = %s", (hanger_id,))
         
         connection.commit()
         
@@ -739,12 +739,12 @@ def save_wheel_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET status = 'done', wheel_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
             cursor.execute("""
-                UPDATE hangers SET status = 'needed', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET status = 'needed', wheel_status = 'needed', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         
@@ -900,11 +900,11 @@ def save_checking_list_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET status = 'done', checking_list_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
-            cursor.execute("UPDATE hangers SET status = 'needed' WHERE id = %s", (hanger_id,))
+            cursor.execute("UPDATE hangers SET status = 'needed', checking_list_status = 'needed' WHERE id = %s", (hanger_id,))
         
         connection.commit()
         # 🔥 REALTIME PUSH
@@ -944,7 +944,7 @@ def get_barcode_checklist_report():
         cursor.execute("""
             SELECT 
                 h.hanger_no,
-                DATE(bcc.created_at) as submission_date,
+                bcc.done_on as submission_date,
                 MAX(bcc.done_by) as submitted_by,
                 COUNT(CASE WHEN bcc.status = 'done' THEN 1 END) as completed_items,
                 COUNT(CASE WHEN bcc.status = 'pending' THEN 1 END) as pending_items,
@@ -952,7 +952,7 @@ def get_barcode_checklist_report():
                 COUNT(*) as total_items
             FROM barcode_checklist bcc
             JOIN hangers h ON bcc.hanger_id = h.id
-            GROUP BY h.hanger_no, DATE(bcc.created_at)
+            GROUP BY h.hanger_no, bcc.done_on
             ORDER BY submission_date DESC
             LIMIT 500
         """)
@@ -1010,7 +1010,7 @@ def get_barcode_checklist_report_details():
                 bcc.done_on
             FROM barcode_checklist bcc
             JOIN hangers h ON bcc.hanger_id = h.id
-            WHERE h.hanger_no = %s AND DATE(bcc.created_at) = %s
+            WHERE h.hanger_no = %s AND bcc.done_on = %s
             ORDER BY bcc.sr_no ASC
         """, (hanger_no, submission_date))
         details = cursor.fetchall()
@@ -1042,7 +1042,7 @@ def get_wheel_checklist_report():
         cursor.execute("""
             SELECT 
                 h.hanger_no,
-                DATE(wcc.created_at) as submission_date,
+                wcc.done_on as submission_date,
                 MAX(wcc.done_by) as submitted_by,
                 COUNT(CASE WHEN wcc.status = 'done' THEN 1 END) as completed_items,
                 COUNT(CASE WHEN wcc.status = 'pending' THEN 1 END) as pending_items,
@@ -1050,7 +1050,7 @@ def get_wheel_checklist_report():
                 COUNT(*) as total_items
             FROM wheel_checklist wcc
             JOIN hangers h ON wcc.hanger_id = h.id
-            GROUP BY h.hanger_no, DATE(wcc.created_at)
+            GROUP BY h.hanger_no, wcc.done_on
             ORDER BY submission_date DESC
             LIMIT 500
         """)
@@ -1108,7 +1108,7 @@ def get_wheel_checklist_report_details():
                 wcc.done_on
             FROM wheel_checklist wcc
             JOIN hangers h ON wcc.hanger_id = h.id
-            WHERE h.hanger_no = %s AND DATE(wcc.created_at) = %s
+            WHERE h.hanger_no = %s AND wcc.done_on = %s
             ORDER BY wcc.sr_no ASC
         """, (hanger_no, submission_date))
         details = cursor.fetchall()
@@ -1140,7 +1140,7 @@ def get_checking_list_checklist_report():
         cursor.execute("""
             SELECT 
                 h.hanger_no,
-                DATE(clcc.created_at) as submission_date,
+                clcc.done_on as submission_date,
                 MAX(clcc.done_by) as submitted_by,
                 COUNT(CASE WHEN clcc.status = 'done' THEN 1 END) as completed_items,
                 COUNT(CASE WHEN clcc.status = 'pending' THEN 1 END) as pending_items,
@@ -1148,7 +1148,7 @@ def get_checking_list_checklist_report():
                 COUNT(*) as total_items
             FROM checking_list_checklist clcc
             JOIN hangers h ON clcc.hanger_id = h.id
-            GROUP BY h.hanger_no, DATE(clcc.created_at)
+            GROUP BY h.hanger_no, clcc.done_on
             ORDER BY submission_date DESC
             LIMIT 500
         """)
@@ -1206,7 +1206,7 @@ def get_checking_list_checklist_report_details():
                 clcc.done_on
             FROM checking_list_checklist clcc
             JOIN hangers h ON clcc.hanger_id = h.id
-            WHERE h.hanger_no = %s AND DATE(clcc.created_at) = %s
+            WHERE h.hanger_no = %s AND clcc.done_on = %s
             ORDER BY clcc.sr_no ASC
         """, (hanger_no, submission_date))
         details = cursor.fetchall()
@@ -1536,10 +1536,10 @@ def delete_checklist_submission(submission_id):
         
         # If no more submissions and hanger was 'needed', reset to 'none'
         if remaining_count == 0:
-            cursor.execute("SELECT status FROM hangers WHERE id = %s", (hanger_id,))
+            cursor.execute("SELECT status, service_status FROM hangers WHERE id = %s", (hanger_id,))
             hanger = cursor.fetchone()
-            if hanger and hanger['status'] == 'needed':
-                cursor.execute("UPDATE hangers SET status = 'none' WHERE id = %s", (hanger_id,))
+            if hanger and hanger['service_status'] == 'needed':
+                cursor.execute("UPDATE hangers SET status = 'none', service_status = 'none' WHERE id = %s", (hanger_id,))
         
         connection.commit()
         cursor.close()
@@ -1612,7 +1612,14 @@ def delete_submission_by_details(checklist_type):
         remaining_count = cursor.fetchone()['count']
         
         if remaining_count == 0:
-            cursor.execute("UPDATE hangers SET status = 'none' WHERE id = %s", (hanger_id,))
+            status_col_map = {
+                'service': 'service_status',
+                'barcode': 'barcode_status',
+                'wheel': 'wheel_status',
+                'checking-list': 'checking_list_status'
+            }
+            status_col = status_col_map.get(checklist_type, 'status')
+            cursor.execute(f"UPDATE hangers SET status = 'none', {status_col} = 'none' WHERE id = %s", (hanger_id,))
             
         connection.commit()
         cursor.close()
