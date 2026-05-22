@@ -19,7 +19,12 @@ def get_all_hangers():
         
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
-            SELECT id, hanger_no, status, last_serviced_date, last_serviced_by 
+            SELECT id, hanger_no, status, 
+                   COALESCE(wheel_status, 'none') as wheel_status,
+                   COALESCE(barcode_status, 'none') as barcode_status,
+                   COALESCE(service_status, 'none') as service_status,
+                   COALESCE(checking_list_status, 'none') as checking_list_status,
+                   last_serviced_date, last_serviced_by 
             FROM hangers ORDER BY hanger_no ASC
         """)
         hangers = cursor.fetchall()
@@ -46,8 +51,18 @@ def get_all_hangers():
 @hangers_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_hanger_stats():
-    """Get hanger statistics for pie chart"""
+    """Get hanger statistics for pie chart - supports per-module stats via ?type= param"""
     try:
+        # Determine which status column to use based on checklist type
+        checklist_type = request.args.get('type', None)
+        status_column_map = {
+            'wheel': 'wheel_status',
+            'barcode': 'barcode_status',
+            'service': 'service_status',
+            'checking_list': 'checking_list_status',
+        }
+        status_col = status_column_map.get(checklist_type, 'status')
+        
         connection = get_db_connection()
         if not connection:
             return jsonify({
@@ -57,12 +72,13 @@ def get_hanger_stats():
         
         cursor = connection.cursor(dictionary=True)
         
-        # Get counts for each status
-        cursor.execute("""
+        # Get counts for each status using the appropriate column
+        # Use COALESCE to treat NULL as 'none'
+        cursor.execute(f"""
             SELECT 
-                COUNT(CASE WHEN status = 'done' THEN 1 END) as done,
-                COUNT(CASE WHEN status = 'needed' THEN 1 END) as needed,
-                COUNT(CASE WHEN status = 'none' THEN 1 END) as none,
+                COUNT(CASE WHEN COALESCE({status_col}, 'none') = 'done' THEN 1 END) as done,
+                COUNT(CASE WHEN COALESCE({status_col}, 'none') = 'needed' THEN 1 END) as needed,
+                COUNT(CASE WHEN COALESCE({status_col}, 'none') = 'none' OR {status_col} IS NULL THEN 1 END) as `none`,
                 COUNT(*) as total
             FROM hangers
         """)
@@ -102,7 +118,12 @@ def get_hanger(hanger_no):
         
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
-            SELECT id, hanger_no, status, last_serviced_date, last_serviced_by 
+            SELECT id, hanger_no, status,
+                   COALESCE(wheel_status, 'none') as wheel_status,
+                   COALESCE(barcode_status, 'none') as barcode_status,
+                   COALESCE(service_status, 'none') as service_status,
+                   COALESCE(checking_list_status, 'none') as checking_list_status,
+                   last_serviced_date, last_serviced_by 
             FROM hangers WHERE hanger_no = %s
         """, (hanger_no,))
         hanger = cursor.fetchone()

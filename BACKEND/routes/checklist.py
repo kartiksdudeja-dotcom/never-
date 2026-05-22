@@ -219,12 +219,12 @@ def save_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', service_status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET service_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
             cursor.execute("""
-                UPDATE hangers SET status = 'needed', service_status = 'needed', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET service_status = 'needed', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         
@@ -588,11 +588,11 @@ def save_barcode_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', barcode_status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET barcode_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
-            cursor.execute("UPDATE hangers SET status = 'needed', barcode_status = 'needed' WHERE id = %s", (hanger_id,))
+            cursor.execute("UPDATE hangers SET barcode_status = 'needed' WHERE id = %s", (hanger_id,))
         
         connection.commit()
         
@@ -739,12 +739,12 @@ def save_wheel_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', wheel_status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET wheel_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
             cursor.execute("""
-                UPDATE hangers SET status = 'needed', wheel_status = 'needed', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET wheel_status = 'needed', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         
@@ -900,11 +900,11 @@ def save_checking_list_hanger_checklist(hanger_no):
         
         if all_done:
             cursor.execute("""
-                UPDATE hangers SET status = 'done', checking_list_status = 'done', last_serviced_date = %s, last_serviced_by = %s
+                UPDATE hangers SET checking_list_status = 'done', last_serviced_date = %s, last_serviced_by = %s
                 WHERE id = %s
             """, (done_on, done_by, hanger_id))
         elif any_failed:
-            cursor.execute("UPDATE hangers SET status = 'needed', checking_list_status = 'needed' WHERE id = %s", (hanger_id,))
+            cursor.execute("UPDATE hangers SET checking_list_status = 'needed' WHERE id = %s", (hanger_id,))
         
         connection.commit()
         # 🔥 REALTIME PUSH
@@ -1539,7 +1539,7 @@ def delete_checklist_submission(submission_id):
             cursor.execute("SELECT status, service_status FROM hangers WHERE id = %s", (hanger_id,))
             hanger = cursor.fetchone()
             if hanger and hanger['service_status'] == 'needed':
-                cursor.execute("UPDATE hangers SET status = 'none', service_status = 'none' WHERE id = %s", (hanger_id,))
+                cursor.execute("UPDATE hangers SET service_status = 'none' WHERE id = %s", (hanger_id,))
         
         connection.commit()
         cursor.close()
@@ -1619,7 +1619,7 @@ def delete_submission_by_details(checklist_type):
                 'checking-list': 'checking_list_status'
             }
             status_col = status_col_map.get(checklist_type, 'status')
-            cursor.execute(f"UPDATE hangers SET status = 'none', {status_col} = 'none' WHERE id = %s", (hanger_id,))
+            cursor.execute(f"UPDATE hangers SET {status_col} = 'none' WHERE id = %s", (hanger_id,))
             
         connection.commit()
         cursor.close()

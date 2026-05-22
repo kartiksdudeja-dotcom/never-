@@ -101,9 +101,18 @@ def get_user_dashboard():
         # Get hanger statistics
         cursor.execute("""
             SELECT 
-                COUNT(CASE WHEN status = 'done' THEN 1 END) as done,
-                COUNT(CASE WHEN status = 'needed' THEN 1 END) as needed,
-                COUNT(CASE WHEN status = 'none' THEN 1 END) as none,
+                COUNT(CASE WHEN COALESCE(service_status,'none')='done' 
+                          AND COALESCE(barcode_status,'none')='done' 
+                          AND COALESCE(wheel_status,'none')='done' 
+                          AND COALESCE(checking_list_status,'none')='done' THEN 1 END) as done,
+                COUNT(CASE WHEN COALESCE(service_status,'none')='needed' 
+                          OR COALESCE(barcode_status,'none')='needed' 
+                          OR COALESCE(wheel_status,'none')='needed' 
+                          OR COALESCE(checking_list_status,'none')='needed' THEN 1 END) as needed,
+                COUNT(CASE WHEN COALESCE(service_status,'none')='none' 
+                          AND COALESCE(barcode_status,'none')='none' 
+                          AND COALESCE(wheel_status,'none')='none' 
+                          AND COALESCE(checking_list_status,'none')='none' THEN 1 END) as none,
                 COUNT(*) as total
             FROM hangers
         """)
