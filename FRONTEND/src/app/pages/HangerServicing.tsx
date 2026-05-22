@@ -70,7 +70,7 @@ export function HangerServicing({
         const hangerList = hangersResponse.data.map((hanger: any) => ({
           id: hanger.id,
           hanger_no: hanger.hanger_no,
-          status: hanger.service_status || hanger.status,
+          status: hanger.service_status || "none",
         }));
         setHangerData(hangerList);
       }

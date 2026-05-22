@@ -70,7 +70,7 @@ export function WheelCompletion({
         const hangerList = hangersResponse.data.map((hanger: any) => ({
           id: hanger.id,
           hanger_no: hanger.hanger_no,
-          status: hanger.wheel_status || hanger.status,
+          status: hanger.wheel_status || "none",
         }));
         setHangerData(hangerList);
       }

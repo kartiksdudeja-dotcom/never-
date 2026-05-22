@@ -70,7 +70,7 @@ export function BarcodeCompletion({
         const hangerList = hangersResponse.data.map((hanger: any) => ({
           id: hanger.id,
           hanger_no: hanger.hanger_no,
-          status: hanger.barcode_status || hanger.status,
+          status: hanger.barcode_status || "none",
         }));
         setHangerData(hangerList);
       }

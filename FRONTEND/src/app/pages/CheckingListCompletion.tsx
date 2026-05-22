@@ -66,7 +66,7 @@ export function CheckingListCompletion({
           (hanger: any) => ({
             id: hanger.id,
             hanger_no: hanger.hanger_no,
-            status: hanger.checking_list_status || hanger.status,
+            status: hanger.checking_list_status || "none",
           })
         );
         setHangerData(hangerList);
